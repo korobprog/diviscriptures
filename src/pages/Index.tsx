@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Search, MapPin, Users, Clock, BookOpen } from 'lucide-react';
-import lotusMandalaBg from '@/assets/lotus-mandala.jpg';
 
 // Mock data for development
 const mockGroups = [
@@ -108,7 +107,7 @@ const Index = () => {
       <div 
         className="relative bg-gradient-temple border-b border-border/50"
         style={{
-          backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${lotusMandalaBg})`,
+          backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(/lotus-mandala.jpg)`,
           backgroundSize: 'cover',
           backgroundPosition: 'center'
         }}
