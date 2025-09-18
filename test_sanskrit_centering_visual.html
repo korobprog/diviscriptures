@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Sanskrit Centering</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .verse-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .sanskrit {
+            text-align: center;
+            font-size: 18px;
+            margin: 20px 0;
+            color: #1e40af;
+        }
+        .translation {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8fafc;
+            border-left: 4px solid #3b82f6;
+        }
+        .commentary {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+        }
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #374151;
+        }
+        
+        /* Sanskrit quote styling - matching the CSS from the app */
+        .sanskrit-quote {
+            display: block;
+            text-align: center;
+            font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+            font-weight: 500;
+            font-size: 1.1em;
+            line-height: 1.8;
+            letter-spacing: 0.01em;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background-color: rgba(40, 30% 92%, 0.3);
+            border-radius: 0.5rem;
+            border-left: 4px solid #f59e0b;
+            color: #374151;
+        }
+    </style>
+</head>
+<body>
+    <div class="verse-title">Стих 1.28 - Тест центрирования санскрита</div>
+    
+    <div class="sanskrit">
+        अर्जुन उवाचदृष्ट्वेमं स्वजनं कृष्ण युयुत्सुं समुपस्थितम्  ।सीदन्ति मम गात्राणि मुखं च परिश ुष्यति ॥ २८ ॥
+    </div>
+    
+    <div class="translation">
+        <div class="section-title">Перевод:</div>
+        Арджуна сказал: О Кришна, видя перед собой друзей и родственников, горящих желанием сражаться, я чувствую, как у меня подкашиваются ноги, а во рту пересыхает.
+    </div>
+    
+    <div class="commentary">
+        <div class="section-title">Комментарий:</div>
+        <div id="commentary-content">Загрузка комментария...</div>
+    </div>
+
+    <script>
+        async function loadVerse() {
+            try {
+                const response = await fetch('/api/verses/get', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        title: 'Бхагавад-гита',
+                        chapter: 1,
+                        verseNumber: 28,
+                        language: 'ru'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.verse) {
+                        const verse = data.verse;
+                        document.querySelector('.sanskrit').textContent = verse.sanskrit;
+                        document.querySelector('.translation .section-title').nextSibling.textContent = verse.translation;
+                        
+                        const commentaryDiv = document.getElementById('commentary-content');
+                        if (verse.commentary) {
+                            // Process commentary to center Sanskrit quotes
+                            const targetSanskrit = 'йасйа̄сти бхактир бхагаватй акин̃чана̄сарваир гун̣аис татра сама̄сате сура̄х̣хара̄в абхактасйа куто махад-гун̣а̄мано-ратхена̄сати дха̄вато бахих̣';
+                            
+                            if (verse.commentary.includes(targetSanskrit)) {
+                                const beforeQuote = verse.commentary.substring(0, verse.commentary.indexOf(targetSanskrit));
+                                const afterQuote = verse.commentary.substring(verse.commentary.indexOf(targetSanskrit) + targetSanskrit.length);
+                                
+                                commentaryDiv.innerHTML = `
+                                    ${beforeQuote.trim()}
+                                    <div class="sanskrit-quote">${targetSanskrit}</div>
+                                    ${afterQuote.trim()}
+                                `;
+                            } else {
+                                commentaryDiv.textContent = verse.commentary;
+                            }
+                        } else {
+                            commentaryDiv.textContent = '❌ Комментарий отсутствует!';
+                        }
+                    }
+                } else {
+                    document.getElementById('commentary-content').textContent = '❌ Ошибка загрузки стиха';
+                }
+            } catch (error) {
+                document.getElementById('commentary-content').textContent = '❌ Ошибка: ' + error.message;
+            }
+        }
+        
+        // Загружаем стих при загрузке страницы
+        loadVerse();
+    </script>
+</body>
+</html>

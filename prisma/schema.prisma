@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  name                String?
+  image               String?
+  language            String               @default("en")
+  country             String?
+  timezone            String?
+  role                UserRole             @default(PARTICIPANT)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  city                String?
+  lastLoginAt         DateTime?
+  password            String?
+  adminRequests       AdminRequest[]
+  groupMemberships    GroupMember[]
+  groupsAsAdmin       Group[]              @relation("GroupAdmin")
+  parseRecords        ParseRecord[]        @relation("ParseInitiator")
+  recordings          Recording[]
+  sessionParticipants SessionParticipant[]
+  createdVerses       Verse[]              @relation("VerseCreator")
+
+  @@map("users")
+}
+
+model Group {
+  id            String         @id @default(cuid())
+  name          String
+  city          String
+  country       String
+  language      String         @default("en")
+  description   String?
+  isActive      Boolean        @default(true)
+  rating        Float          @default(0.0)
+  memberCount   Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  adminId       String
+  adminRequests AdminRequest[]
+  members       GroupMember[]
+  admin         User           @relation("GroupAdmin", fields: [adminId], references: [id])
+  sessions      Session[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id       String   @id @default(cuid())
+  userId   String
+  groupId  String
+  joinedAt DateTime @default(now())
+  isActive Boolean  @default(true)
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@map("group_members")
+}
+
+model Session {
+  id            String               @id @default(cuid())
+  groupId       String
+  title         String
+  description   String?
+  status        SessionStatus        @default(SCHEDULED)
+  startTime     DateTime
+  endTime       DateTime?
+  maxDuration   Int                  @default(3600)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  recordings    Recording[]
+  participants  SessionParticipant[]
+  sessionVerses SessionVerse[]
+  group         Group                @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  verses        Verse[]
+
+  @@map("sessions")
+}
+
+model SessionParticipant {
+  id        String    @id @default(cuid())
+  sessionId String
+  userId    String
+  joinedAt  DateTime  @default(now())
+  leftAt    DateTime?
+  isActive  Boolean   @default(true)
+  session   Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@map("session_participants")
+}
+
+model SessionVerse {
+  id        String   @id @default(cuid())
+  sessionId String
+  verseId   String
+  order     Int      @default(1)
+  createdAt DateTime @default(now())
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  verse     Verse    @relation(fields: [verseId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, verseId])
+  @@map("session_verses")
+}
+
+model Verse {
+  id                    String         @id @default(cuid())
+  sessionId             String?
+  chapter               Int
+  verseNumber           Int
+  sanskrit              String
+  translation           String
+  commentary            String?
+  assignedTo            String?
+  isRead                Boolean        @default(false)
+  readAt                DateTime?
+  order                 Int?
+  createdAt             DateTime       @default(now())
+  createdBy             String?
+  language              String         @default("ru")
+  source                String         @default("AI Generated")
+  title                 String
+  transliteration       String?
+  updatedAt             DateTime       @updatedAt
+  wordByWordTranslation String?
+  isMergedVerse         Boolean        @default(false)
+  mergedWith            String?
+  mergedBlockId         String?
+  sessionVerses         SessionVerse[]
+  creator               User?          @relation("VerseCreator", fields: [createdBy], references: [id])
+  session               Session?       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([title, chapter, verseNumber, language])
+  @@map("verses")
+}
+
+model Recording {
+  id        String        @id @default(cuid())
+  sessionId String
+  userId    String
+  type      RecordingType @default(AUDIO)
+  filename  String
+  url       String
+  duration  Int?
+  size      Int?
+  isPublic  Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  session   Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("recordings")
+}
+
+model AdminRequest {
+  id         String             @id @default(cuid())
+  userId     String
+  groupId    String?
+  city       String
+  country    String
+  message    String?
+  status     AdminRequestStatus @default(PENDING)
+  reviewedBy String?
+  reviewedAt DateTime?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  group      Group?             @relation(fields: [groupId], references: [id])
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admin_requests")
+}
+
+model AiSettings {
+  id                String   @id @default(cuid())
+  provider          String?
+  createdAt         DateTime @default(now())
+  huggingFaceApiKey String?
+  isActive          Boolean  @default(true)
+  openaiApiKey      String?
+  selectedModel     String?
+  updatedAt         DateTime @updatedAt
+
+  @@map("ai_settings")
+}
+
+model ParseRecord {
+  id          String   @id @default(cuid())
+  textType    String
+  totalVerses Int      @default(0)
+  totalErrors Int      @default(0)
+  success     Boolean  @default(false)
+  results     String?
+  initiatedBy String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  initiator   User     @relation("ParseInitiator", fields: [initiatedBy], references: [id], onDelete: Cascade)
+
+  @@map("parse_records")
+}
+
+enum UserRole {
+  PARTICIPANT
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum SessionStatus {
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum RecordingType {
+  AUDIO
+  VIDEO
+  SCREEN
+}
+
+enum AdminRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}

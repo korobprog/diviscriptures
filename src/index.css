@@ -186,4 +186,178 @@
     );
     background-size: 60px 60px;
   }
+
+  /* Enhanced Reading Typography */
+  .reading-text {
+    font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+    word-spacing: 0.05em;
+  }
+
+  .sanskrit-text {
+    font-family: 'Noto Sans Devanagari', 'Sanskrit Text', 'Times New Roman', serif;
+    font-weight: 600;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+  }
+
+  .transliteration-text {
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    font-style: italic;
+    font-weight: 400;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+  }
+
+  .translation-text {
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    font-weight: 400;
+    line-height: 1.7;
+    letter-spacing: 0.005em;
+    max-width: 65ch; /* Optimal reading width */
+  }
+
+  .commentary-text {
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    font-weight: 400;
+    line-height: 1.6;
+    letter-spacing: 0.005em;
+    max-width: 70ch; /* Slightly wider for commentary */
+  }
+
+  /* Sanskrit quotes within commentary - center them */
+  .sanskrit-quote {
+    display: block;
+    text-align: center;
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    font-weight: 500;
+    font-size: 1.1em;
+    line-height: 1.8;
+    letter-spacing: 0.01em;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background-color: hsl(var(--muted) / 0.3);
+    border-radius: 0.5rem;
+    border-left: 4px solid hsl(var(--primary));
+    color: hsl(var(--foreground));
+  }
+
+  /* Reading-friendly spacing */
+  .verse-section {
+    margin-bottom: 2rem;
+  }
+
+  .verse-section:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Enhanced contrast for better readability */
+  .reading-foreground {
+    color: hsl(var(--foreground));
+    text-shadow: 0 1px 3px hsl(var(--background) / 0.9);
+    font-weight: 500;
+  }
+
+  .reading-muted {
+    color: hsl(var(--muted-foreground));
+    text-shadow: 0 1px 2px hsl(var(--background) / 0.7);
+    font-weight: 400;
+  }
+
+  /* Special contrast for verse reading surface */
+  .verse-reading-surface .reading-foreground {
+    color: hsl(25 40% 18%); /* Darker for better contrast on light background */
+    text-shadow: 0 1px 2px hsl(var(--lotus-white) / 0.8);
+  }
+
+  .verse-reading-surface .reading-muted {
+    color: hsl(25 30% 35%); /* Adjusted for better readability */
+    text-shadow: 0 1px 2px hsl(var(--lotus-white) / 0.6);
+  }
+
+  /* Dark mode adjustments */
+  .dark .verse-reading-surface .reading-foreground {
+    color: hsl(var(--foreground));
+    text-shadow: 0 1px 2px hsl(var(--card) / 0.8);
+  }
+
+  .dark .verse-reading-surface .reading-muted {
+    color: hsl(var(--muted-foreground));
+    text-shadow: 0 1px 2px hsl(var(--card) / 0.6);
+  }
+
+  /* Smooth transitions for better UX */
+  .verse-transition {
+    transition: all 0.3s ease-in-out;
+  }
+
+  /* Focus states for accessibility */
+  .verse-focus:focus {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Reading-optimized background for verse block */
+  .verse-reading-bg {
+    background: linear-gradient(135deg, 
+      hsl(var(--lotus-white)) 0%, 
+      hsl(var(--background)) 50%, 
+      hsl(var(--lotus-white)) 100%
+    );
+    background-size: 200% 200%;
+    animation: gentle-shift 20s ease-in-out infinite;
+  }
+
+  /* Subtle pattern overlay for visual interest without distraction */
+  .verse-pattern-overlay {
+    background-image: 
+      radial-gradient(circle at 20% 20%, hsl(var(--lotus-pink) / 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, hsl(var(--primary) / 0.02) 0%, transparent 50%),
+      radial-gradient(circle at 40% 60%, hsl(var(--krishna-blue) / 0.02) 0%, transparent 50%);
+    background-size: 300px 300px, 400px 400px, 350px 350px;
+    background-position: 0 0, 100px 100px, 200px 200px;
+  }
+
+  /* Soft reading surface with optimal contrast */
+  .verse-reading-surface {
+    background: hsl(var(--lotus-white));
+    border: 1px solid hsl(var(--border) / 0.3);
+    box-shadow: 
+      0 4px 20px -5px hsl(var(--lotus-pink) / 0.1),
+      0 2px 10px -3px hsl(var(--primary) / 0.05),
+      inset 0 1px 0 hsl(var(--lotus-white) / 0.8);
+  }
+
+  /* Gentle animation for the background */
+  @keyframes gentle-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  /* Dark mode reading background */
+  .dark .verse-reading-bg {
+    background: linear-gradient(135deg, 
+      hsl(var(--card)) 0%, 
+      hsl(var(--background)) 50%, 
+      hsl(var(--card)) 100%
+    );
+  }
+
+  .dark .verse-pattern-overlay {
+    background-image: 
+      radial-gradient(circle at 20% 20%, hsl(var(--lotus-pink) / 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, hsl(var(--primary) / 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 40% 60%, hsl(var(--krishna-blue) / 0.03) 0%, transparent 50%);
+  }
+
+  .dark .verse-reading-surface {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border) / 0.2);
+    box-shadow: 
+      0 4px 20px -5px hsl(var(--lotus-pink) / 0.15),
+      0 2px 10px -3px hsl(var(--primary) / 0.1),
+      inset 0 1px 0 hsl(var(--card) / 0.8);
+  }
 }

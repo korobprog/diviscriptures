@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Verse 1.28</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .verse-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .sanskrit {
+            text-align: center;
+            font-size: 18px;
+            margin: 20px 0;
+            color: #1e40af;
+        }
+        .translation {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8fafc;
+            border-left: 4px solid #3b82f6;
+        }
+        .commentary {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+        }
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #374151;
+        }
+    </style>
+</head>
+<body>
+    <div class="verse-title">Стих 1.28</div>
+    
+    <div class="sanskrit">
+        अर्जुन उवाचदृष्ट्वेमं स्वजनं कृष्ण युयुत्सुं समुपस्थितम्  ।सीदन्ति मम गात्राणि मुखं च परिश ुष्यति ॥ २८ ॥
+    </div>
+    
+    <div class="translation">
+        <div class="section-title">Перевод:</div>
+        Арджуна сказал: О Кришна, видя перед собой друзей и родственников, горящих желанием сражаться, я чувствую, как у меня подкашиваются ноги, а во рту пересыхает.
+    </div>
+    
+    <div class="commentary">
+        <div class="section-title">Комментарий:</div>
+        <div id="commentary-content">Загрузка комментария...</div>
+    </div>
+
+    <script>
+        async function loadVerse() {
+            try {
+                const response = await fetch('/api/verses/get', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        title: 'Бхагавад-гита',
+                        chapter: 1,
+                        verseNumber: 28,
+                        language: 'ru'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.verse) {
+                        const verse = data.verse;
+                        document.querySelector('.sanskrit').textContent = verse.sanskrit;
+                        document.querySelector('.translation .section-title').nextSibling.textContent = verse.translation;
+                        
+                        const commentaryDiv = document.getElementById('commentary-content');
+                        if (verse.commentary) {
+                            commentaryDiv.textContent = verse.commentary;
+                            commentaryDiv.style.color = '#000';
+                        } else {
+                            commentaryDiv.textContent = '❌ Комментарий отсутствует!';
+                            commentaryDiv.style.color = '#dc2626';
+                        }
+                    }
+                } else {
+                    document.getElementById('commentary-content').textContent = '❌ Ошибка загрузки стиха';
+                }
+            } catch (error) {
+                document.getElementById('commentary-content').textContent = '❌ Ошибка: ' + error.message;
+            }
+        }
+        
+        // Загружаем стих при загрузке страницы
+        loadVerse();
+    </script>
+</body>
+</html>

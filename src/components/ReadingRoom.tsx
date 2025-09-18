@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { getVerseTitle } from '@/lib/verse-utils';
 import { 
   Video, 
   Mic, 
@@ -28,6 +29,8 @@ interface Verse {
   chapter: number;
   verse: number;
   sanskrit: string;
+  transliteration?: string;
+  wordByWordTranslation?: string;
   translation: string;
   commentary: string;
 }
@@ -189,7 +192,13 @@ export default function ReadingRoom({
             <Card className="shadow-lotus bg-gradient-lotus border-lotus-pink/20">
               <CardHeader>
                 <CardTitle className="text-center">
-                  Стих {currentVerse.chapter}.{currentVerse.verse}
+                  {getVerseTitle({
+                    chapter: currentVerse.chapter,
+                    verse: currentVerse.verse,
+                    isMergedVerse: (currentVerse as any).isMergedVerse,
+                    mergedWith: (currentVerse as any).mergedWith,
+                    mergedBlockId: (currentVerse as any).mergedBlockId
+                  })}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -199,6 +208,47 @@ export default function ReadingRoom({
                     {currentVerse.sanskrit}
                   </p>
                 </div>
+
+                {/* Transliteration */}
+                {currentVerse.transliteration && (
+                  <>
+                    <div className="text-center">
+                      <h4 className="font-semibold mb-2 text-foreground">Транслитерация:</h4>
+                      <p className="text-sm text-gray-600 italic">
+                        {currentVerse.transliteration}
+                      </p>
+                    </div>
+                    <Separator />
+                  </>
+                )}
+
+                {/* Word-by-word Translation */}
+                {currentVerse.wordByWordTranslation && (
+                  <>
+                    <div className="text-center">
+                      <h4 className="font-semibold mb-2 text-foreground">Пословный перевод:</h4>
+                      <div className="text-sm text-gray-600">
+                        {currentVerse.wordByWordTranslation.split(';').map((item, index) => {
+                          const [sanskrit, translation] = item.split('—').map(s => s.trim());
+                          return (
+                            <div key={index} className="mb-1">
+                              <span className="font-medium" style={{ color: '#b91c1c' }}>
+                                {sanskrit}
+                              </span>
+                              {translation && (
+                                <>
+                                  <span className="mx-1 text-gray-400">—</span>
+                                  <span className="text-gray-700">{translation}</span>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <Separator />
+                  </>
+                )}
 
                 <Separator />
 

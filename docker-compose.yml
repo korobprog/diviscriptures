@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: vrinda-sangha-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vrinda_sangha
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vrinda-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vrinda_sangha"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for WebRTC signaling and real-time data
+  redis:
+    image: redis:7-alpine
+    container_name: vrinda-sangha-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - vrinda-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Socket.io server for WebRTC signaling
+  socket-server:
+    build: ./socket-server
+    container_name: vrinda-sangha-socket
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SOCKET_PORT=3001
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - vrinda-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Coturn TURN/STUN server for WebRTC NAT traversal (temporarily disabled)
+  # coturn:
+  #   image: coturn/coturn:latest
+  #   container_name: vrinda-sangha-coturn
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3478:3478"
+  #     - "3478:3478/udp"
+  #     - "5349:5349"
+  #     - "5349:5349/udp"
+  #     - "49160-49200:49160-49200/udp"
+  #   volumes:
+  #     - coturn_data:/var/lib/coturn
+  #   networks:
+  #     - vrinda-network
+  #   healthcheck:
+  #     test: ["CMD", "nc", "-u", "-z", "localhost", "3478"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+  # Optional: pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: vrinda-sangha-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@vrindasangha.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - vrinda-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  redis_data:
+    driver: local
+  coturn_data:
+    driver: local
+
+networks:
+  vrinda-network:
+    driver: bridge
