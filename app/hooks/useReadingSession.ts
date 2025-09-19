@@ -178,23 +178,41 @@ export function useReadingSession({
 
   // Event handlers
   const handleSessionJoined: SocketEventHandlers['session-joined'] = useCallback((data) => {
-    if (data.sessionId === sessionId && data.participantId === participantId) {
-      setSessionState(prev => ({
+    if (data.sessionId !== sessionId) {
+      return;
+    }
+
+    setSessionState(prev => {
+      const participantsFromEvent = data.participants ?? [];
+      const updatedParticipants = Array.from(new Set([
+        ...participantsFromEvent,
+        participantId,
+      ]));
+
+      return {
         ...prev,
         isActive: true,
-        participants: [...prev.participants, participantId],
-      }));
-      setError(null);
-    }
+        participants: updatedParticipants,
+      };
+    });
+    setError(null);
   }, [sessionId, participantId]);
 
   const handleParticipantJoined: SocketEventHandlers['participant-joined'] = useCallback((data) => {
-    if (data.participantId !== participantId) {
-      setSessionState(prev => ({
+    if (data.participantId === participantId) {
+      return;
+    }
+
+    setSessionState(prev => {
+      if (prev.participants.includes(data.participantId)) {
+        return prev;
+      }
+
+      return {
         ...prev,
         participants: [...prev.participants, data.participantId],
-      }));
-    }
+      };
+    });
   }, [participantId]);
 
   const handleParticipantLeft: SocketEventHandlers['participant-left'] = useCallback((data) => {

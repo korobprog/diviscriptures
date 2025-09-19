@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 export interface SocketEventHandlers {
-  'session-joined': (data: { sessionId: string; participantId: string; participantName: string }) => void;
+  'session-joined': (data: { sessionId: string; participants: string[] }) => void;
   'session-left': (data: { sessionId: string; participantId: string }) => void;
   'participant-joined': (data: { participantId: string; participantName: string }) => void;
   'participant-left': (data: { participantId: string }) => void;
