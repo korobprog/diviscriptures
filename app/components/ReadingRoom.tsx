@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -14,10 +14,9 @@ import {
 import { getSectionLabel, type LanguageCode } from '@/lib/localization';
 import { getVerseTitle } from '@/lib/verse-utils';
 import { processCommentaryText } from '@/lib/commentary-utils';
-import VideoConference, { VideoConferenceRef } from '@/app/components/VideoConference';
-import MediaControls from '@/app/components/MediaControls';
+import VideoContainer from '@/app/components/VideoContainer';
+import TimerContainer from '@/app/components/TimerContainer';
 import ParticipantQueue from '@/app/components/ParticipantQueue';
-import SessionTimer from '@/app/components/SessionTimer';
 import VerseGenerator from '@/app/components/VerseGenerator';
 import { Participant } from '@/app/hooks/useWebRTC';
 import { useReadingSession } from '@/app/hooks/useReadingSession';
@@ -60,7 +59,7 @@ export default function ReadingRoom({
     isConnected: false,
   });
   
-  const videoConferenceRef = useRef<VideoConferenceRef>(null);
+  // Remove videoConferenceRef as it's now handled in VideoContainer
 
   // Reading session hook
   const {
@@ -81,12 +80,13 @@ export default function ReadingRoom({
     participantName,
     autoJoin: true,
     onSessionEnded: (reason) => {
-      console.log('Session ended:', reason);
+      // Session ended
     },
     onError: (err) => {
       setError(err);
     },
   });
+
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -149,44 +149,19 @@ export default function ReadingRoom({
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Video Conference Area */}
             <div className="lg:col-span-3 flex flex-col">
-              <VideoConference
-                ref={videoConferenceRef}
+              <VideoContainer
                 sessionId={sessionId}
                 participantId={participantId}
                 participantName={participantName}
+                participants={participants}
                 onError={setError}
                 onParticipantUpdate={setParticipants}
                 onMediaStateChange={setMediaState}
-                className="flex-1"
-              />
-              
-              {/* Media Controls */}
-              <MediaControls
-                isMuted={mediaState.isMuted}
-                isVideoOn={mediaState.isVideoOn}
-                isScreenSharing={mediaState.isScreenSharing}
-                isConnected={mediaState.isConnected}
-                onToggleMute={() => videoConferenceRef.current?.toggleMute()}
-                onToggleVideo={() => videoConferenceRef.current?.toggleVideo()}
-                onToggleScreenShare={() => videoConferenceRef.current?.toggleScreenShare()}
-                onLeaveSession={() => videoConferenceRef.current?.leaveSession()}
               />
             </div>
 
             {/* Right Panel - Session Controls */}
             <div className="space-y-6">
-              {/* Session Timer */}
-              <SessionTimer
-                timeRemaining={sessionState.timeRemaining}
-                isActive={sessionState.isActive}
-                totalDuration={3600} // 1 hour
-                onStart={() => startTimer(3600)}
-                onPause={pauseTimer}
-                onResume={resumeTimer}
-                onReset={() => startTimer(3600)}
-                onExtend={(minutes) => startTimer(sessionState.timeRemaining + minutes * 60)}
-              />
-
               {/* Participant Queue */}
               <ParticipantQueue
                 participants={participants}
@@ -202,12 +177,11 @@ export default function ReadingRoom({
             </div>
           </div>
 
-          {/* Middle Row: Verse Generator - Compact Version */}
+          {/* Verse Generator */}
           <div className="w-full">
             <VerseGenerator
               sessionId={sessionId}
               onVerseGenerated={(verse) => {
-                console.log('Verse generated:', verse);
                 // Обновляем текущий стих в сессии
                 setCurrentVerse(verse);
               }}
@@ -345,6 +319,21 @@ export default function ReadingRoom({
                 )}
               </CardContent>
             </Card>
+          </div>
+
+          {/* Session Timer - Moved to bottom to avoid overlapping with video */}
+          <div className="w-full">
+            <TimerContainer
+              timeRemaining={sessionState.timeRemaining}
+              isActive={sessionState.isActive}
+              isPaused={sessionState.isPaused}
+              totalDuration={3600} // 1 hour
+              onStart={() => startTimer(3600)}
+              onPause={pauseTimer}
+              onResume={resumeTimer}
+              onReset={() => startTimer(3600)}
+              onExtend={(minutes) => startTimer(sessionState.timeRemaining + minutes * 60)}
+            />
           </div>
         </div>
       </div>

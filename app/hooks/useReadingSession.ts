@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSocket, SocketEventHandlers } from '@/app/hooks/useSocket';
 
 export interface Verse {
@@ -30,6 +30,7 @@ export interface ReadingSessionState {
   queue: string[];
   timeRemaining: number;
   isActive: boolean;
+  isPaused: boolean;
   isMyTurn: boolean;
   participants: string[];
 }
@@ -93,10 +94,15 @@ export function useReadingSession({
     queue: [],
     timeRemaining: 0,
     isActive: false,
+    isPaused: false,
     isMyTurn: false,
     participants: [],
   });
   const [error, setError] = useState<string | null>(null);
+  
+  // Client-side timer for smooth countdown
+  const [clientTimeRemaining, setClientTimeRemaining] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Socket hook
   const {
@@ -137,6 +143,38 @@ export function useReadingSession({
       joinSession();
     }
   }, [autoJoin, isConnected, sessionState.isActive]);
+
+  // Client-side timer for smooth countdown
+  useEffect(() => {
+    if (sessionState.isActive && !sessionState.isPaused && clientTimeRemaining > 0) {
+      timerRef.current = setInterval(() => {
+        setClientTimeRemaining(prev => {
+          const newTime = Math.max(0, prev - 1);
+          if (newTime === 0) {
+            // Timer reached zero, sync with server
+            setSessionState(prevState => ({
+              ...prevState,
+              timeRemaining: 0,
+              isActive: false,
+            }));
+          }
+          return newTime;
+        });
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [sessionState.isActive, sessionState.isPaused, clientTimeRemaining]);
 
   // Event handlers
   const handleSessionJoined: SocketEventHandlers['session-joined'] = useCallback((data) => {
@@ -204,11 +242,23 @@ export function useReadingSession({
   }, [participantId]);
 
   const handleSessionTimerUpdate: SocketEventHandlers['session-timer-update'] = useCallback((data) => {
-    setSessionState(prev => ({
-      ...prev,
-      timeRemaining: data.timeRemaining,
-      isActive: data.isActive,
-    }));
+    setClientTimeRemaining(data.timeRemaining);
+    
+    setSessionState(prev => {
+      // Only update if values actually changed to prevent unnecessary re-renders
+      if (prev.timeRemaining === data.timeRemaining && 
+          prev.isActive === data.isActive && 
+          prev.isPaused === (data.isPaused || false)) {
+        return prev;
+      }
+      
+      return {
+        ...prev,
+        timeRemaining: data.timeRemaining,
+        isActive: data.isActive,
+        isPaused: data.isPaused || false,
+      };
+    });
   }, []);
 
   const handleSessionEnded: SocketEventHandlers['session-ended'] = useCallback((data) => {
@@ -344,14 +394,17 @@ export function useReadingSession({
 
   // Session management
   const startTimer = useCallback((duration: number) => {
+    console.log('Starting timer with duration:', duration);
     socketStartSessionTimer(sessionId, duration);
   }, [socketStartSessionTimer, sessionId]);
 
   const pauseTimer = useCallback(() => {
+    console.log('Pausing timer');
     socketPauseSessionTimer(sessionId);
   }, [socketPauseSessionTimer, sessionId]);
 
   const resumeTimer = useCallback(() => {
+    console.log('Resuming timer');
     socketResumeSessionTimer(sessionId);
   }, [socketResumeSessionTimer, sessionId]);
 
@@ -378,7 +431,10 @@ export function useReadingSession({
 
   return {
     // State
-    sessionState,
+    sessionState: {
+      ...sessionState,
+      timeRemaining: clientTimeRemaining, // Use client-side timer for smooth display
+    },
     isConnected,
     error,
     

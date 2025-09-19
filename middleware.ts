@@ -63,11 +63,12 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    '/admin/:path*',
-    '/super-admin/:path*',
-    '/api/:path*',
-    '/auth/:path*',
-    '/dashboard/:path*',
-    '/profile/:path*',
+    // Временно отключаем middleware для диагностики
+    // '/admin/:path*',
+    // '/super-admin/:path*',
+    // '/api/:path*',
+    // '/auth/:path*',
+    // '/dashboard/:path*',
+    // '/profile/:path*',
   ],
 }

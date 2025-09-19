@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useEffect, useRef, forwardRef, useImperativeHandle, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +40,7 @@ export interface VideoConferenceRef {
   leaveSession: () => void;
 }
 
-const VideoConference = forwardRef<VideoConferenceRef, VideoConferenceProps>(({
+const VideoConference = memo(forwardRef<VideoConferenceRef, VideoConferenceProps>(({
   sessionId,
   participantId,
   participantName,
@@ -86,7 +86,7 @@ const VideoConference = forwardRef<VideoConferenceRef, VideoConferenceProps>(({
     if (onParticipantUpdate) {
       onParticipantUpdate(getParticipantsArray());
     }
-  }, [participants, onParticipantUpdate, getParticipantsArray]);
+  }, [participants.size, onParticipantUpdate, getParticipantsArray]); // Use size instead of full participants object
 
   // Notify parent of media state changes
   useEffect(() => {
@@ -106,19 +106,27 @@ const VideoConference = forwardRef<VideoConferenceRef, VideoConferenceProps>(({
     
     participantsArray.forEach(participant => {
       const videoElement = videoRefs.current.get(participant.id);
-      if (videoElement && participant.stream) {
+      if (videoElement && participant.stream && videoElement.srcObject !== participant.stream) {
         videoElement.srcObject = participant.stream;
+        // Force video to play if it's enabled
+        if (participant.isVideoOn) {
+          videoElement.play().catch(console.warn);
+        }
       }
     });
 
     // Set up local video
     if (localStream) {
       const localVideo = videoRefs.current.get(participantId);
-      if (localVideo) {
+      if (localVideo && localVideo.srcObject !== localStream) {
         localVideo.srcObject = localStream;
+        // Force local video to play if it's enabled
+        if (isVideoOn) {
+          localVideo.play().catch(console.warn);
+        }
       }
     }
-  }, [participants, localStream, participantId, getParticipantsArray]);
+  }, [participants.size, localStream, participantId, isVideoOn, getParticipantsArray]); // Use size instead of full participants object
 
   // Get connection status badge
   const getConnectionStatusBadge = () => {
@@ -260,7 +268,10 @@ const VideoConference = forwardRef<VideoConferenceRef, VideoConferenceProps>(({
                 playsInline
                 muted={participant.id === participantId} // Mute local video
                 className="w-full h-full object-cover rounded-lg"
-                style={{ display: participant.isVideoOn ? 'block' : 'none' }}
+                style={{ 
+                  display: participant.isVideoOn ? 'block' : 'none',
+                  opacity: participant.isVideoOn ? 1 : 0
+                }}
               />
               
               {/* Placeholder when video is off */}
@@ -342,7 +353,7 @@ const VideoConference = forwardRef<VideoConferenceRef, VideoConferenceProps>(({
       </CardContent>
     </Card>
   );
-});
+}));
 
 VideoConference.displayName = 'VideoConference';
 

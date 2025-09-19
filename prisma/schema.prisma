@@ -33,22 +33,26 @@ model User {
 }
 
 model Group {
-  id            String         @id @default(cuid())
-  name          String
-  city          String
-  country       String
-  language      String         @default("en")
-  description   String?
-  isActive      Boolean        @default(true)
-  rating        Float          @default(0.0)
-  memberCount   Int            @default(0)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  adminId       String
-  adminRequests AdminRequest[]
-  members       GroupMember[]
-  admin         User           @relation("GroupAdmin", fields: [adminId], references: [id])
-  sessions      Session[]
+  id                    String         @id @default(cuid())
+  name                  String
+  city                  String
+  country               String
+  language              String         @default("en")
+  description           String?
+  isActive              Boolean        @default(true)
+  rating                Float          @default(0.0)
+  memberCount           Int            @default(0)
+  readingTime           String?        // Время для чтения (например, "19:00")
+  joinLink              String?        // Ссылка для присоединения к группе
+  qrCode                String?        // QR код для ссылки присоединения
+  maxParticipants       Int            @default(10) // Максимальное количество участников
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  adminId               String
+  adminRequests         AdminRequest[]
+  members               GroupMember[]
+  admin                 User           @relation("GroupAdmin", fields: [adminId], references: [id])
+  sessions              Session[]
 
   @@map("groups")
 }
@@ -136,6 +140,8 @@ model Verse {
   isMergedVerse         Boolean        @default(false)
   mergedWith            String?
   mergedBlockId         String?
+  canto                 Int?
+  metadata              String?        // JSON string for storing additional metadata
   sessionVerses         SessionVerse[]
   creator               User?          @relation("VerseCreator", fields: [createdBy], references: [id])
   session               Session?       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -211,6 +217,7 @@ enum UserRole {
   PARTICIPANT
   ADMIN
   SUPER_ADMIN
+  LISTENER
 }
 
 enum SessionStatus {

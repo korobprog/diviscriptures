@@ -2,20 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  Search, 
-  MapPin, 
-  Users, 
-  Clock, 
-  Star,
-  Plus,
-  Filter
-} from "lucide-react";
+import CreateGroupModal from "@/app/components/CreateGroupModal";
+import QRCodeModal from "@/app/components/QRCodeModal";
 
 interface Group {
   id: string;
@@ -23,146 +11,138 @@ interface Group {
   city: string;
   country: string;
   language: string;
-  participantsCount: number;
-  maxParticipants: number;
-  nextSessionTime: string;
-  adminName: string;
+  description?: string;
   rating: number;
-  isActive: boolean;
-  description: string;
+  memberCount: number;
+  readingTime?: string;
+  maxParticipants: number;
+  joinLink?: string;
+  qrCode?: string;
+  createdAt: string;
+  isMember?: boolean;
+  admin: {
+    id: string;
+    name: string;
+    image?: string;
+  };
 }
 
 export default function GroupsPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [filteredGroups, setFilteredGroups] = useState<Group[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCity, setSelectedCity] = useState("all");
-  const [selectedLanguage, setSelectedLanguage] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - в реальном приложении это будет API запрос
-  const mockGroups: Group[] = [
-    {
-      id: '1',
-      name: 'Московские преданные',
-      city: 'Москва',
-      country: 'Россия',
-      language: 'Русский',
-      participantsCount: 8,
-      maxParticipants: 12,
-      nextSessionTime: 'Сегодня 19:00',
-      adminName: 'Прабху Арджуна дас',
-      rating: 4.8,
-      isActive: true,
-      description: 'Ежедневное чтение Бхагавад-гиты с комментариями Шрилы Прабхупады'
-    },
-    {
-      id: '2',
-      name: 'Питерская сангха',
-      city: 'Санкт-Петербург',
-      country: 'Россия',
-      language: 'Русский',
-      participantsCount: 5,
-      maxParticipants: 10,
-      nextSessionTime: 'Завтра 18:30',
-      adminName: 'Матаджи Радха деви',
-      rating: 4.9,
-      isActive: false,
-      description: 'Изучение Шримад-Бхагаватам в кругу преданных'
-    },
-    {
-      id: '3',
-      name: 'English Seekers',
-      city: 'London',
-      country: 'UK',
-      language: 'English',
-      participantsCount: 12,
-      maxParticipants: 15,
-      nextSessionTime: 'Today 16:00',
-      adminName: 'Prabhu Krishna das',
-      rating: 4.7,
-      isActive: true,
-      description: 'Weekly Bhagavad-gita study sessions in English'
-    },
-    {
-      id: '4',
-      name: 'Deutsche Bhakten',
-      city: 'Berlin',
-      country: 'Germany',
-      language: 'Deutsch',
-      participantsCount: 6,
-      maxParticipants: 8,
-      nextSessionTime: 'Morgen 20:00',
-      adminName: 'Prabhu Govinda das',
-      rating: 4.6,
-      isActive: true,
-      description: 'Regelmäßige Srimad-Bhagavatam Lesungen auf Deutsch'
+  // Отладочная информация
+  console.log("GroupsPage render - isCreateModalOpen:", isCreateModalOpen);
+  console.log("GroupsPage render - session:", session);
+  console.log("GroupsPage render - status:", status);
+
+  const fetchGroups = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch("/api/groups");
+      if (!response.ok) {
+        throw new Error("Ошибка загрузки групп");
+      }
+      const data = await response.json();
+      setGroups(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Неизвестная ошибка");
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
 
   useEffect(() => {
-    // Имитация загрузки данных
-    setTimeout(() => {
-      setGroups(mockGroups);
-      setFilteredGroups(mockGroups);
-      setIsLoading(false);
-    }, 1000);
+    fetchGroups();
   }, []);
 
+  // Отслеживаем изменения состояния модального окна
   useEffect(() => {
-    let filtered = groups;
+    console.log("Modal state changed:", isCreateModalOpen);
+  }, [isCreateModalOpen]);
 
-    // Фильтр по поисковому запросу
-    if (searchQuery) {
-      filtered = filtered.filter(group => 
-        group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        group.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        group.description.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // Фильтр по городу
-    if (selectedCity && selectedCity !== "all") {
-      filtered = filtered.filter(group => group.city === selectedCity);
-    }
-
-    // Фильтр по языку
-    if (selectedLanguage && selectedLanguage !== "all") {
-      filtered = filtered.filter(group => group.language === selectedLanguage);
-    }
-
-    setFilteredGroups(filtered);
-  }, [groups, searchQuery, selectedCity, selectedLanguage]);
-
-  const cities = Array.from(new Set(groups.map(group => group.city))).sort();
-  const languages = Array.from(new Set(groups.map(group => group.language))).sort();
-
-  const handleJoinGroup = (groupId: string) => {
-    if (!session?.user) {
-      // Перенаправляем на страницу входа
-      window.location.href = '/login';
-      return;
-    }
-    // Логика присоединения к группе
-    console.log('Joining group:', groupId);
+  const handleGroupCreated = () => {
+    fetchGroups(); // Обновляем список групп после создания
   };
 
-  const handleCreateGroup = () => {
-    if (!session?.user) {
-      window.location.href = '/login';
-      return;
-    }
-    // Логика создания группы
-    console.log('Creating new group...');
+  const handleGenerateQRCode = (group: Group) => {
+    setSelectedGroup(group);
+    setIsQRModalOpen(true);
   };
 
-  if (isLoading) {
+  const handleJoinGroup = async (groupId: string) => {
+    if (!session) {
+      alert('Необходимо войти в систему');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/groups/join/${groupId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Ошибка присоединения к группе');
+      }
+
+      alert(data.message || 'Вы успешно присоединились к группе');
+      // Обновляем список групп
+      fetchGroups();
+    } catch (error) {
+      console.error('Ошибка при присоединении к группе:', error);
+      alert(error instanceof Error ? error.message : 'Неизвестная ошибка');
+    }
+  };
+
+  const handleLeaveGroup = async (groupId: string) => {
+    if (!session) {
+      alert('Необходимо войти в систему');
+      return;
+    }
+
+    if (!confirm('Вы уверены, что хотите покинуть группу?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/groups/leave/${groupId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Ошибка выхода из группы');
+      }
+
+      alert(data.message || 'Вы успешно покинули группу');
+      // Обновляем список групп
+      fetchGroups();
+    } catch (error) {
+      console.error('Ошибка при выходе из группы:', error);
+      alert(error instanceof Error ? error.message : 'Неизвестная ошибка');
+    }
+  };
+
+  if (status === "loading") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-saffron-50 via-cream-50 to-gold-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-saffron-500 mx-auto mb-4"></div>
-          <p className="text-saffron-600">Загрузка групп...</p>
+          <p className="text-saffron-600">Загрузка...</p>
         </div>
       </div>
     );
@@ -171,7 +151,6 @@ export default function GroupsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-saffron-50 via-cream-50 to-gold-50">
       <div className="container mx-auto px-6 py-8">
-        {/* Заголовок */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-saffron-800 mb-2">
             Духовные группы
@@ -181,167 +160,154 @@ export default function GroupsPage() {
           </p>
         </div>
 
-        {/* Фильтры и поиск */}
-        <Card className="bg-white/80 backdrop-blur-sm border-saffron-200 mb-8">
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-saffron-400" />
-                <Input
-                  placeholder="Поиск групп..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 border-saffron-200 focus:border-saffron-400"
-                />
-              </div>
-
-              <Select value={selectedCity} onValueChange={setSelectedCity}>
-                <SelectTrigger className="border-saffron-200 focus:border-saffron-400">
-                  <SelectValue placeholder="Все города" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все города</SelectItem>
-                  {cities.map((city) => (
-                    <SelectItem key={city} value={city}>
-                      {city}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-                <SelectTrigger className="border-saffron-200 focus:border-saffron-400">
-                  <SelectValue placeholder="Все языки" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все языки</SelectItem>
-                  {languages.map((language) => (
-                    <SelectItem key={language} value={language}>
-                      {language}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Button 
-                onClick={handleCreateGroup}
-                className="bg-gradient-to-r from-saffron-500 to-lotus-pink-500 hover:from-saffron-600 hover:to-lotus-pink-600"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Создать группу
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Результаты поиска */}
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-saffron-600">
-            Найдено групп: <span className="font-semibold text-saffron-800">{filteredGroups.length}</span>
-          </p>
-          {(searchQuery || (selectedCity && selectedCity !== "all") || (selectedLanguage && selectedLanguage !== "all")) && (
-            <Button 
-              variant="outline" 
-              size="sm"
+        {session ? (
+          <div className="text-center mb-8">
+            <button 
               onClick={() => {
-                setSearchQuery("");
-                setSelectedCity("all");
-                setSelectedLanguage("all");
+                console.log("Кнопка нажата, открываем модальное окно");
+                setIsCreateModalOpen(true);
               }}
-              className="border-saffron-200 text-saffron-700"
+              className="bg-gradient-to-r from-saffron-500 to-lotus-pink-500 hover:from-saffron-600 hover:to-lotus-pink-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
             >
-              <Filter className="w-3 h-3 mr-1" />
-              Сбросить фильтры
-            </Button>
-          )}
-        </div>
+              Создать группу
+            </button>
+          </div>
+        ) : (
+          <div className="text-center mb-8">
+            <p className="text-saffron-600 mb-4">
+              Войдите в систему, чтобы создать группу
+            </p>
+            <a 
+              href="/login"
+              className="bg-gradient-to-r from-saffron-500 to-lotus-pink-500 hover:from-saffron-600 hover:to-lotus-pink-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl inline-block"
+            >
+              Войти
+            </a>
+          </div>
+        )}
 
-        {/* Список групп */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredGroups.map((group) => (
-            <Card key={group.id} className="bg-white/80 backdrop-blur-sm border-saffron-200 hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-saffron-800 mb-1">
-                      {group.name}
-                    </CardTitle>
-                    <CardDescription className="flex items-center text-saffron-600">
-                      <MapPin className="w-3 h-3 mr-1" />
-                      {group.city}, {group.country}
-                    </CardDescription>
+        {isLoading ? (
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-saffron-500 mx-auto mb-4"></div>
+            <p className="text-saffron-600">Загрузка групп...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center">
+            <p className="text-red-500 mb-4">{error}</p>
+            <button 
+              onClick={fetchGroups}
+              className="bg-saffron-500 hover:bg-saffron-600 text-white px-4 py-2 rounded-lg"
+            >
+              Попробовать снова
+            </button>
+          </div>
+        ) : groups.length === 0 ? (
+          <div className="text-center">
+            <p className="text-saffron-600 mb-4">
+              Пока нет активных групп. Станьте первым, кто создаст группу!
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {groups.map((group) => (
+              <div 
+                key={group.id}
+                className="bg-white/80 backdrop-blur-sm rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 p-6 border border-saffron-100"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <h3 className="text-xl font-bold text-saffron-800">
+                    {group.name}
+                  </h3>
+                  <div className="flex items-center text-saffron-600">
+                    <span className="text-sm">⭐ {group.rating.toFixed(1)}</span>
                   </div>
-                  <Badge 
-                    variant={group.isActive ? "default" : "secondary"}
-                    className={group.isActive ? "bg-green-500" : "bg-gray-400"}
-                  >
-                    {group.isActive ? "Активна" : "Неактивна"}
-                  </Badge>
                 </div>
-              </CardHeader>
+                
+                <div className="space-y-2 mb-4">
+                  <p className="text-saffron-700">
+                    <span className="font-medium">📍</span> {group.city}, {group.country}
+                  </p>
+                  <p className="text-saffron-700">
+                    <span className="font-medium">🌐</span> {group.language}
+                  </p>
+                  <p className="text-saffron-700">
+                    <span className="font-medium">👥</span> {group.memberCount} участников
+                  </p>
+                </div>
 
-              <CardContent className="space-y-4">
-                <p className="text-saffron-700 text-sm">
-                  {group.description}
-                </p>
+                {group.description && (
+                  <p className="text-saffron-600 text-sm mb-4 line-clamp-3">
+                    {group.description}
+                  </p>
+                )}
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-saffron-600">Участники:</span>
-                    <span className="text-saffron-800 font-medium">
-                      {group.participantsCount}/{group.maxParticipants}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    {group.admin.image ? (
+                      <img 
+                        src={group.admin.image} 
+                        alt={group.admin.name}
+                        className="w-6 h-6 rounded-full"
+                      />
+                    ) : (
+                      <div className="w-6 h-6 bg-saffron-200 rounded-full flex items-center justify-center">
+                        <span className="text-saffron-600 text-xs font-medium">
+                          {group.admin.name?.charAt(0) || "A"}
+                        </span>
+                      </div>
+                    )}
+                    <span className="text-saffron-600 text-sm">
+                      {group.admin.name}
                     </span>
                   </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-saffron-600">Рейтинг:</span>
-                    <div className="flex items-center">
-                      <Star className="w-3 h-3 text-yellow-500 mr-1" />
-                      <span className="text-saffron-800 font-medium">{group.rating}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-saffron-600">Следующая сессия:</span>
-                    <span className="text-saffron-800 font-medium">{group.nextSessionTime}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-saffron-600">Администратор:</span>
-                    <span className="text-saffron-800 font-medium">{group.adminName}</span>
+                  <div className="flex gap-2 flex-wrap">
+                    {session && session.user.id === group.admin.id && (
+                      <button 
+                        onClick={() => handleGenerateQRCode(group)}
+                        className="bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500 hover:from-amber-500 hover:via-yellow-600 hover:to-orange-600 text-white px-3 py-2 rounded-lg text-sm transition-all duration-300 shadow-lg font-medium border border-amber-300 animate-golden-glow flex-shrink-0"
+                        title="Генерировать QR код"
+                      >
+                        QR
+                      </button>
+                    )}
+                    {group.isMember ? (
+                      <button 
+                        onClick={() => handleLeaveGroup(group.id)}
+                        className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-lg text-sm transition-all duration-300 shadow-lg font-medium border border-red-400 flex-1 min-w-0"
+                      >
+                        Покинуть группу
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => handleJoinGroup(group.id)}
+                        className="bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500 hover:from-amber-500 hover:via-yellow-600 hover:to-orange-600 text-white px-4 py-2 rounded-lg text-sm transition-all duration-300 shadow-lg font-medium border border-amber-300 animate-golden-glow flex-1 min-w-0"
+                      >
+                        Присоединиться
+                      </button>
+                    )}
                   </div>
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
 
-                <div className="pt-4 border-t border-saffron-200">
-                  <Button 
-                    onClick={() => handleJoinGroup(group.id)}
-                    className="w-full bg-gradient-to-r from-saffron-500 to-lotus-pink-500 hover:from-saffron-600 hover:to-lotus-pink-600"
-                    disabled={!group.isActive}
-                  >
-                    <Users className="w-4 h-4 mr-2" />
-                    {group.isActive ? "Присоединиться" : "Группа неактивна"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <CreateGroupModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onGroupCreated={handleGroupCreated}
+        />
 
-        {filteredGroups.length === 0 && (
-          <Card className="bg-white/80 backdrop-blur-sm border-saffron-200">
-            <CardContent className="pt-6 text-center">
-              <p className="text-saffron-600 mb-4">
-                Группы не найдены. Попробуйте изменить параметры поиска.
-              </p>
-              <Button 
-                onClick={handleCreateGroup}
-                className="bg-gradient-to-r from-saffron-500 to-lotus-pink-500 hover:from-saffron-600 hover:to-lotus-pink-600"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Создать первую группу
-              </Button>
-            </CardContent>
-          </Card>
+        {selectedGroup && (
+          <QRCodeModal
+            isOpen={isQRModalOpen}
+            onClose={() => {
+              setIsQRModalOpen(false);
+              setSelectedGroup(null);
+            }}
+            groupId={selectedGroup.id}
+            groupName={selectedGroup.name}
+          />
         )}
       </div>
     </div>

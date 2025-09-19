@@ -82,8 +82,9 @@ class DatabaseManager:
                                     "isMergedVerse" = $7,
                                     "mergedWith" = $8,
                                     "mergedBlockId" = $9,
-                                    "updatedAt" = $10
-                                WHERE id = $11
+                                    canto = $10,
+                                    "updatedAt" = $11
+                                WHERE id = $12
                                 """,
                                 verse.sanskrit,
                                 verse.transliteration,
@@ -94,6 +95,7 @@ class DatabaseManager:
                                 verse.metadata.get('is_merged_verse', False) if verse.metadata else False,
                                 json.dumps(verse.metadata.get('merged_with', [])) if verse.metadata and verse.metadata.get('merged_with') else None,
                                 verse.metadata.get('merged_block_id') if verse.metadata else None,
+                                verse.canto,
                                 datetime.utcnow(),
                                 existing['id']
                             )
@@ -104,9 +106,9 @@ class DatabaseManager:
                                 INSERT INTO verses (
                                     id, title, chapter, "verseNumber", sanskrit, transliteration,
                                     "wordByWordTranslation", translation, commentary, source, language, 
-                                    "isMergedVerse", "mergedWith", "mergedBlockId", "createdAt", "updatedAt"
+                                    "isMergedVerse", "mergedWith", "mergedBlockId", canto, "createdAt", "updatedAt"
                                 ) VALUES (
-                                    gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+                                    gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
                                 )
                                 """,
                                 verse.title,
@@ -122,6 +124,7 @@ class DatabaseManager:
                                 verse.metadata.get('is_merged_verse', False) if verse.metadata else False,
                                 json.dumps(verse.metadata.get('merged_with', [])) if verse.metadata and verse.metadata.get('merged_with') else None,
                                 verse.metadata.get('merged_block_id') if verse.metadata else None,
+                                verse.canto,
                                 datetime.utcnow(),
                                 datetime.utcnow()
                             )
@@ -268,3 +271,147 @@ class DatabaseManager:
             else:
                 deleted = await conn.execute("DELETE FROM verses")
                 print("✅ Deleted all verses")
+    
+    async def get_verses_for_backup(self, 
+                                  language: str = None,
+                                  source: str = None,
+                                  canto: int = None) -> List[dict]:
+        """Get verses for backup with optional filters"""
+        async with self.pool.acquire() as conn:
+            query = """
+                SELECT id, "sessionId", chapter, "verseNumber", sanskrit, translation, 
+                       commentary, "assignedTo", "isRead", "readAt", "order", "createdAt", 
+                       "createdBy", language, source, title, transliteration, "updatedAt",
+                       "wordByWordTranslation", "isMergedVerse", "mergedWith", "mergedBlockId", 
+                       canto, metadata
+                FROM verses 
+                WHERE 1=1
+            """
+            params = []
+            param_count = 0
+            
+            if language:
+                param_count += 1
+                query += f" AND language = ${param_count}"
+                params.append(language)
+            
+            if source:
+                param_count += 1
+                query += f" AND source = ${param_count}"
+                params.append(source)
+            
+            if canto:
+                param_count += 1
+                query += f" AND canto = ${param_count}"
+                params.append(canto)
+            
+            query += " ORDER BY title, chapter, \"verseNumber\""
+            
+            rows = await conn.fetch(query, *params)
+            return [dict(row) for row in rows]
+    
+    async def save_verse(self, verse_data: dict) -> bool:
+        """Save a single verse to database"""
+        async with self.pool.acquire() as conn:
+            try:
+                async with conn.transaction():
+                    # Check if verse already exists
+                    existing = await conn.fetchrow(
+                        """
+                        SELECT id FROM verses 
+                        WHERE title = $1 AND chapter = $2 AND "verseNumber" = $3 AND language = $4
+                        """,
+                        verse_data['title'], verse_data['chapter'], 
+                        verse_data['verseNumber'], verse_data['language']
+                    )
+                    
+                    if existing:
+                        # Update existing verse
+                        await conn.execute(
+                            """
+                            UPDATE verses SET
+                                "sessionId" = $1,
+                                sanskrit = $2,
+                                translation = $3,
+                                commentary = $4,
+                                "assignedTo" = $5,
+                                "isRead" = $6,
+                                "readAt" = $7,
+                                "order" = $8,
+                                "createdBy" = $9,
+                                source = $10,
+                                transliteration = $11,
+                                "wordByWordTranslation" = $12,
+                                "isMergedVerse" = $13,
+                                "mergedWith" = $14,
+                                "mergedBlockId" = $15,
+                                canto = $16,
+                                metadata = $17,
+                                "updatedAt" = $18
+                            WHERE id = $19
+                            """,
+                            verse_data.get('sessionId'),
+                            verse_data['sanskrit'],
+                            verse_data['translation'],
+                            verse_data.get('commentary'),
+                            verse_data.get('assignedTo'),
+                            verse_data.get('isRead', False),
+                            verse_data.get('readAt'),
+                            verse_data.get('order'),
+                            verse_data.get('createdBy'),
+                            verse_data.get('source', 'AI Generated'),
+                            verse_data.get('transliteration'),
+                            verse_data.get('wordByWordTranslation'),
+                            verse_data.get('isMergedVerse', False),
+                            verse_data.get('mergedWith'),
+                            verse_data.get('mergedBlockId'),
+                            verse_data.get('canto'),
+                            verse_data.get('metadata'),
+                            datetime.utcnow(),
+                            existing['id']
+                        )
+                    else:
+                        # Insert new verse
+                        await conn.execute(
+                            """
+                            INSERT INTO verses (
+                                id, "sessionId", chapter, "verseNumber", sanskrit, translation,
+                                commentary, "assignedTo", "isRead", "readAt", "order", "createdAt",
+                                "createdBy", language, source, title, transliteration, "updatedAt",
+                                "wordByWordTranslation", "isMergedVerse", "mergedWith", "mergedBlockId",
+                                canto, metadata
+                            ) VALUES (
+                                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24
+                            )
+                            """,
+                            verse_data['id'],
+                            verse_data.get('sessionId'),
+                            verse_data['chapter'],
+                            verse_data['verseNumber'],
+                            verse_data['sanskrit'],
+                            verse_data['translation'],
+                            verse_data.get('commentary'),
+                            verse_data.get('assignedTo'),
+                            verse_data.get('isRead', False),
+                            verse_data.get('readAt'),
+                            verse_data.get('order'),
+                            verse_data['createdAt'],
+                            verse_data.get('createdBy'),
+                            verse_data.get('language', 'ru'),
+                            verse_data.get('source', 'AI Generated'),
+                            verse_data['title'],
+                            verse_data.get('transliteration'),
+                            verse_data['updatedAt'],
+                            verse_data.get('wordByWordTranslation'),
+                            verse_data.get('isMergedVerse', False),
+                            verse_data.get('mergedWith'),
+                            verse_data.get('mergedBlockId'),
+                            verse_data.get('canto'),
+                            verse_data.get('metadata')
+                        )
+                    
+                    return True
+                    
+            except Exception as e:
+                print(f"❌ Error saving verse {verse_data.get('id', 'unknown')}: {e}")
+                return False

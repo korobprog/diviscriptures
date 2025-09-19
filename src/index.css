@@ -163,9 +163,25 @@
     50% { box-shadow: 0 0 0 10px hsl(var(--primary) / 0); }
   }
 
+  @keyframes golden-glow {
+    0%, 100% { 
+      box-shadow: 
+        0 0 5px hsl(45 100% 60% / 0.5),
+        0 0 10px hsl(45 100% 60% / 0.3),
+        0 0 15px hsl(45 100% 60% / 0.1);
+    }
+    50% { 
+      box-shadow: 
+        0 0 10px hsl(45 100% 70% / 0.8),
+        0 0 20px hsl(45 100% 70% / 0.5),
+        0 0 30px hsl(45 100% 70% / 0.2);
+    }
+  }
+
   .animate-float { animation: float-gently 6s ease-in-out infinite; }
   .animate-lotus-bloom { animation: lotus-bloom 4s ease-in-out infinite; }
   .animate-sacred-pulse { animation: sacred-pulse 3s ease-in-out infinite; }
+  .animate-golden-glow { animation: golden-glow 2s ease-in-out infinite; }
 
   /* Temple ornament patterns */
   .temple-pattern {

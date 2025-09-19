@@ -1,9 +1,11 @@
 'use client'
 
 import React, { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import LanguageSelector from './LanguageSelector';
 import GroupCard from './GroupCard';
 import ReadingRoom from './ReadingRoom';
+import CreateGroupModal from './CreateGroupModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,10 +18,12 @@ const mockGroups = [
     id: '1',
     name: 'Московские преданные',
     city: 'Москва',
+    country: 'Россия',
     language: 'Русский',
     participantsCount: 8,
     maxParticipants: 12,
     nextSessionTime: 'Сегодня 19:00',
+    readingTime: '19:00',
     adminName: 'Прабху Арджуна дас',
     rating: 4.8,
     isActive: true,
@@ -29,10 +33,12 @@ const mockGroups = [
     id: '2',
     name: 'Питерская сангха',
     city: 'Санкт-Петербург',
+    country: 'Россия',
     language: 'Русский',
     participantsCount: 5,
     maxParticipants: 10,
     nextSessionTime: 'Завтра 18:30',
+    readingTime: '18:30',
     adminName: 'Матаджи Радха деви',
     rating: 4.9,
     isActive: false,
@@ -42,10 +48,12 @@ const mockGroups = [
     id: '3',
     name: 'English Seekers',
     city: 'London',
+    country: 'UK',
     language: 'English',
     participantsCount: 12,
     maxParticipants: 15,
     nextSessionTime: 'Today 16:00',
+    readingTime: '16:00',
     adminName: 'Prabhu Krishna das',
     rating: 4.7,
     isActive: true,
@@ -69,22 +77,121 @@ const mockParticipants = [
 ];
 
 const Index = () => {
+  const { data: session, status } = useSession();
   const [currentLanguage, setCurrentLanguage] = useState<string>('');
   const [currentView, setCurrentView] = useState<'language' | 'groups' | 'reading'>('language');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [groups, setGroups] = useState<any[]>([]);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
 
   const handleLanguageSelect = (language: string) => {
     setCurrentLanguage(language);
     setCurrentView('groups');
+    fetchGroups();
+  };
+
+  const fetchGroups = async () => {
+    try {
+      setIsLoadingGroups(true);
+      const response = await fetch("/api/groups");
+      if (!response.ok) {
+        throw new Error("Ошибка загрузки групп");
+      }
+      const data = await response.json();
+      setGroups(data);
+    } catch (err) {
+      console.error("Ошибка загрузки групп:", err);
+      // Используем моковые данные в случае ошибки
+      setGroups(mockGroups);
+    } finally {
+      setIsLoadingGroups(false);
+    }
   };
 
   const handleJoinGroup = (groupId: string) => {
-    setCurrentView('reading');
+    // Перенаправляем на страницу присоединения к группе
+    window.location.href = `/groups/join/${groupId}`;
+  };
+
+  const handleLeaveGroup = async (groupId: string) => {
+    if (!session) {
+      alert('Необходимо войти в систему');
+      return;
+    }
+
+    if (!confirm('Вы уверены, что хотите покинуть группу?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/groups/leave/${groupId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Ошибка выхода из группы');
+      }
+
+      alert(data.message || 'Вы успешно покинули группу');
+      // Обновляем список групп
+      if (selectedLanguage) {
+        fetchGroups();
+      }
+    } catch (error) {
+      console.error('Ошибка при выходе из группы:', error);
+      alert(error instanceof Error ? error.message : 'Неизвестная ошибка');
+    }
   };
 
   const handleCreateGroup = () => {
-    // This would open a create group modal
     console.log('Creating new group...');
+    
+    // Проверяем статус загрузки
+    if (status === 'loading') {
+      alert('Загрузка данных пользователя...');
+      return;
+    }
+    
+    // Проверяем аутентификацию
+    if (!session) {
+      alert('Необходимо войти в систему для создания группы');
+      return;
+    }
+
+    // Проверяем роль пользователя
+    if (session.user.role === 'LISTENER') {
+      alert('Слушатели не могут создавать группы');
+      return;
+    }
+    
+    setIsCreateModalOpen(true);
+  };
+
+  const handleGroupCreated = () => {
+    console.log('Группа создана, обновляем список...');
+    // Здесь можно обновить список групп или показать уведомление
+    setIsCreateModalOpen(false);
+  };
+
+  const getUserRoleDisplay = (role: string) => {
+    switch (role) {
+      case 'SUPER_ADMIN':
+        return 'Супер-администратор';
+      case 'ADMIN':
+        return 'Администратор';
+      case 'PARTICIPANT':
+        return 'Участник';
+      case 'LISTENER':
+        return 'Слушатель';
+      default:
+        return 'Пользователь';
+    }
   };
 
   if (currentView === 'language') {
@@ -126,27 +233,40 @@ const Index = () => {
               Присоединитесь к духовному сообществу для совместного изучения священных писаний
             </p>
             
-            {/* Кнопки аутентификации */}
+            {/* Кнопки аутентификации или информация о пользователе */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
-              <Button 
-                asChild
-                className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm"
-              >
-                <a href="/login">
-                  <LogIn className="w-4 h-4 mr-2" />
-                  Войти
-                </a>
-              </Button>
-              <Button 
-                asChild
-                variant="outline"
-                className="bg-transparent hover:bg-white/10 text-white border-white/50 backdrop-blur-sm"
-              >
-                <a href="/register">
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Зарегистрироваться
-                </a>
-              </Button>
+              {session ? (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="text-white text-lg font-medium">
+                    Добро пожаловать, {session.user.name || session.user.email}!
+                  </div>
+                  <Badge className="bg-primary/20 text-white text-sm px-3 py-1">
+                    {getUserRoleDisplay(session.user.role)}
+                  </Badge>
+                </div>
+              ) : (
+                <>
+                  <Button 
+                    asChild
+                    className="bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm"
+                  >
+                    <a href="/login">
+                      <LogIn className="w-4 h-4 mr-2" />
+                      Войти
+                    </a>
+                  </Button>
+                  <Button 
+                    asChild
+                    variant="outline"
+                    className="bg-transparent hover:bg-white/10 text-white border-white/50 backdrop-blur-sm"
+                  >
+                    <a href="/register">
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Зарегистрироваться
+                    </a>
+                  </Button>
+                </>
+              )}
             </div>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -155,7 +275,7 @@ const Index = () => {
               </Badge>
               <div className="flex items-center gap-2 text-white/80">
                 <Users className="w-5 h-5" />
-                <span>{mockGroups.length} активных групп</span>
+                <span>{groups.length} активных групп</span>
               </div>
             </div>
           </div>
@@ -177,14 +297,16 @@ const Index = () => {
             </div>
           </div>
           
-          <Button 
-            onClick={handleCreateGroup}
-            size="lg"
-            className="bg-gradient-sacred hover:opacity-90 transition-sacred shadow-divine px-8"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Создать группу
-          </Button>
+          {session && session.user.role !== 'LISTENER' && (
+            <Button 
+              onClick={handleCreateGroup}
+              size="lg"
+              className="bg-gradient-sacred hover:opacity-90 transition-sacred shadow-divine px-8"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Создать группу
+            </Button>
+          )}
         </div>
 
         {/* Stats Cards */}
@@ -220,26 +342,42 @@ const Index = () => {
             <h2 className="text-3xl font-bold text-foreground">Доступные группы</h2>
             <div className="flex items-center gap-2 text-muted-foreground">
               <MapPin className="w-4 h-4" />
-              <span className="text-sm">Показано {mockGroups.length} групп</span>
+              <span className="text-sm">Показано {groups.length} групп</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {mockGroups
-              .filter(group => 
-                group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                group.city.toLowerCase().includes(searchQuery.toLowerCase())
-              )
-              .map((group) => (
-                <GroupCard
-                  key={group.id}
-                  group={group}
-                  onJoin={handleJoinGroup}
-                />
-              ))}
-          </div>
+          {isLoadingGroups ? (
+            <div className="text-center py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Загрузка групп...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {groups
+                .filter(group => 
+                  group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  group.city.toLowerCase().includes(searchQuery.toLowerCase())
+                )
+                .map((group) => (
+                  <GroupCard
+                    key={group.id}
+                    group={{
+                      ...group,
+                      participantsCount: group.memberCount,
+                      adminName: group.admin?.name || 'Неизвестно',
+                      adminId: group.admin?.id,
+                      nextSessionTime: group.readingTime ? `Сегодня ${group.readingTime}` : 'Не указано'
+                    }}
+                    onJoin={handleJoinGroup}
+                    onLeave={handleLeaveGroup}
+                    currentUserId={session?.user?.id}
+                    currentUserRole={session?.user?.role}
+                  />
+                ))}
+            </div>
+          )}
 
-          {mockGroups.filter(group => 
+          {!isLoadingGroups && groups.filter(group => 
             group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             group.city.toLowerCase().includes(searchQuery.toLowerCase())
           ).length === 0 && (
@@ -260,6 +398,13 @@ const Index = () => {
           )}
         </div>
       </div>
+
+      {/* Модальное окно для создания группы */}
+      <CreateGroupModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onGroupCreated={handleGroupCreated}
+      />
     </div>
   );
 };

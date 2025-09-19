@@ -1,0 +1,21 @@
+# Пример настройки cron для автоматического бекапа стихов
+# 
+# Для редактирования cron задач используйте команду:
+# crontab -e
+#
+# Добавьте одну из следующих строк:
+
+# Ежедневный бекап в 2:00 ночи
+0 2 * * * cd /home/maxim/Documents/uchihastry/vrinda-sangha && python scripts/auto_backup.py >> logs/backup.log 2>&1
+
+# Еженедельный бекап по воскресеньям в 3:00 ночи
+0 3 * * 0 cd /home/maxim/Documents/uchihastry/vrinda-sangha && python scripts/auto_backup.py >> logs/backup.log 2>&1
+
+# Бекап каждые 6 часов
+0 */6 * * * cd /home/maxim/Documents/uchihastry/vrinda-sangha && python scripts/auto_backup.py >> logs/backup.log 2>&1
+
+# Создайте папку для логов:
+# mkdir -p /home/maxim/Documents/uchihastry/vrinda-sangha/logs
+
+# Для просмотра логов:
+# tail -f /home/maxim/Documents/uchihastry/vrinda-sangha/logs/backup.log

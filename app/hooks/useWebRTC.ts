@@ -6,8 +6,7 @@ import {
   webrtcUtils, 
   SignalingMessage,
   ConnectionState,
-  PeerState,
-  WebRTCError 
+  PeerState
 } from '@/lib/webrtc';
 
 export interface Participant {
@@ -58,7 +57,7 @@ export function useWebRTC({
   sessionId,
   participantId,
   participantName,
-  socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001',
+  socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002',
   autoJoin = true
 }: UseWebRTCOptions): UseWebRTCReturn {
   // State
@@ -108,13 +107,15 @@ export function useWebRTC({
         }
       });
 
-      newSocket.on('connect_error', (err) => {
+    newSocket.on('connect_error', (err) => {
+      // Don't log or show error for browser extension issues
+      if (!err.message.includes('Could not establish connection') &&
+          !err.message.includes('Receiving end does not exist') &&
+          !err.message.includes('WebSocket is closed before the connection is established')) {
         console.error('Socket connection error:', err);
-        // Don't show error for browser extension issues
-        if (!err.message.includes('Could not establish connection')) {
-          setError(`Connection error: ${err.message}`);
-        }
-      });
+        setError(`Connection error: ${err.message}`);
+      }
+    });
 
       newSocket.on('reconnect', (attemptNumber) => {
         console.log('Socket reconnected after', attemptNumber, 'attempts');
@@ -189,7 +190,7 @@ export function useWebRTC({
   }, [participantId]);
 
   // Create peer connection
-  const createPeerConnection = useCallback((participantId: string): RTCPeerConnection => {
+  const createPeerConnection = useCallback((targetParticipantId: string): RTCPeerConnection => {
     const config = getWebRTCConfig();
     const peerConnection = new RTCPeerConnection(config);
 
@@ -233,7 +234,7 @@ export function useWebRTC({
     };
 
     return peerConnection;
-  }, [sessionId]);
+  }, [sessionId, participantId]);
 
   // Handle offer
   const handleOffer = async (peerConnection: RTCPeerConnection, offer: RTCSessionDescriptionInit, from: string) => {
@@ -386,6 +387,15 @@ export function useWebRTC({
       localStreamRef.current = stream;
       setLocalStream(stream);
 
+      // Initialize media states based on actual track states
+      const audioTrack = stream.getAudioTracks()[0];
+      const videoTrack = stream.getVideoTracks()[0];
+      const initialMuteState = audioTrack ? !audioTrack.enabled : false;
+      const initialVideoState = videoTrack ? videoTrack.enabled : true;
+      
+      setIsMuted(initialMuteState);
+      setIsVideoOn(initialVideoState);
+
       // Add self to participants
       setParticipants(prev => {
         const newMap = new Map(prev);
@@ -393,8 +403,8 @@ export function useWebRTC({
           id: participantId,
           name: participantName,
           stream,
-          isMuted: false,
-          isVideoOn: true,
+          isMuted: initialMuteState,
+          isVideoOn: initialVideoState,
           isReading: false,
           connectionState: ConnectionState.CONNECTED,
           peerState: PeerState.CONNECTED,
@@ -463,14 +473,15 @@ export function useWebRTC({
       const audioTrack = localStreamRef.current.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
-        setIsMuted(!audioTrack.enabled);
+        const newMuteState = !audioTrack.enabled;
+        setIsMuted(newMuteState);
         
         // Update participant state
         setParticipants(prev => {
           const newMap = new Map(prev);
           const participant = newMap.get(participantId);
           if (participant) {
-            newMap.set(participantId, { ...participant, isMuted: !audioTrack.enabled });
+            newMap.set(participantId, { ...participant, isMuted: newMuteState });
           }
           return newMap;
         });
@@ -484,14 +495,15 @@ export function useWebRTC({
       const videoTrack = localStreamRef.current.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
-        setIsVideoOn(!videoTrack.enabled);
+        const newVideoState = videoTrack.enabled;
+        setIsVideoOn(newVideoState);
         
         // Update participant state
         setParticipants(prev => {
           const newMap = new Map(prev);
           const participant = newMap.get(participantId);
           if (participant) {
-            newMap.set(participantId, { ...participant, isVideoOn: !videoTrack.enabled });
+            newMap.set(participantId, { ...participant, isVideoOn: newVideoState });
           }
           return newMap;
         });

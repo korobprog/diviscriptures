@@ -32,6 +32,18 @@ export default {
         "temple-gold": "hsl(var(--temple-gold))",
         "lotus-pink": "hsl(var(--lotus-pink))",
         "lotus-white": "hsl(var(--lotus-white))",
+        saffron: {
+          50: "hsl(35, 100%, 95%)",
+          100: "hsl(35, 95%, 90%)",
+          200: "hsl(35, 90%, 80%)",
+          300: "hsl(35, 85%, 70%)",
+          400: "hsl(35, 80%, 60%)",
+          500: "hsl(35, 85%, 55%)",
+          600: "hsl(35, 90%, 50%)",
+          700: "hsl(35, 95%, 45%)",
+          800: "hsl(35, 100%, 40%)",
+          900: "hsl(35, 100%, 35%)",
+        },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",

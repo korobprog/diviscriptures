@@ -135,6 +135,16 @@ export async function PUT(request: NextRequest) {
 
     const { sessionId, participantId } = validatedData;
 
+    // Check if user is super admin - allow joining anytime
+    const isSuperAdmin = session.user.role === 'SUPER_ADMIN';
+    
+    if (!isSuperAdmin) {
+      // For regular users, check if it's time for matching
+      // This would require getting group info from sessionId
+      // For now, we'll allow joining but this could be enhanced
+      // to check actual group reading time
+    }
+
     // Add participant to session
     await signalingStore.addParticipant(sessionId, participantId);
 
@@ -143,11 +153,13 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Joined session successfully',
+      message: isSuperAdmin ? 'Супер-администратор присоединился к сессии' : 'Joined session successfully',
       data: {
         sessionId,
         participantId,
         participants,
+        userRole: session.user.role,
+        isSuperAdmin,
       },
     });
 

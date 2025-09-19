@@ -268,6 +268,125 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle session timer start
+  socket.on('start-session-timer', (data) => {
+    try {
+      const { sessionId, duration } = data;
+      
+      // Store timer state in Redis
+      const timerData = {
+        sessionId,
+        duration,
+        timeRemaining: duration,
+        isActive: true,
+        isPaused: false,
+        startTime: Date.now()
+      };
+      
+      redisClient.setEx(
+        `timer:${sessionId}`,
+        3600,
+        JSON.stringify(timerData)
+      );
+      
+      // Broadcast to all participants in session
+      io.to(sessionId).emit('session-timer-update', {
+        sessionId,
+        timeRemaining: duration,
+        isActive: true,
+        isPaused: false,
+        timestamp: Date.now()
+      });
+      
+      console.log(`Session timer started in session ${sessionId} for ${duration}s`);
+      
+    } catch (error) {
+      console.error('Error handling session timer start:', error);
+      socket.emit('error', { message: 'Failed to start session timer' });
+    }
+  });
+
+  // Handle session timer pause
+  socket.on('pause-session-timer', async (data) => {
+    try {
+      const { sessionId } = data;
+      
+      // Get current timer state from Redis
+      const timerDataStr = await redisClient.get(`timer:${sessionId}`);
+      if (timerDataStr) {
+        const timerData = JSON.parse(timerDataStr);
+        timerData.isPaused = true;
+        timerData.pauseTime = Date.now();
+        
+        // Update Redis
+        redisClient.setEx(
+          `timer:${sessionId}`,
+          3600,
+          JSON.stringify(timerData)
+        );
+        
+        // Broadcast to all participants in session
+        io.to(sessionId).emit('session-timer-update', {
+          sessionId,
+          timeRemaining: timerData.timeRemaining,
+          isActive: timerData.isActive,
+          isPaused: true,
+          timestamp: Date.now()
+        });
+        
+        console.log(`Session timer paused in session ${sessionId}`);
+      }
+      
+    } catch (error) {
+      console.error('Error handling session timer pause:', error);
+      socket.emit('error', { message: 'Failed to pause session timer' });
+    }
+  });
+
+  // Handle session timer resume
+  socket.on('resume-session-timer', async (data) => {
+    try {
+      const { sessionId } = data;
+      
+      // Get current timer state from Redis
+      const timerDataStr = await redisClient.get(`timer:${sessionId}`);
+      if (timerDataStr) {
+        const timerData = JSON.parse(timerDataStr);
+        
+        // Calculate pause duration and adjust start time
+        if (timerData.pauseTime) {
+          const pauseDuration = Date.now() - timerData.pauseTime;
+          timerData.startTime += pauseDuration;
+          delete timerData.pauseTime;
+        }
+        
+        timerData.isPaused = false;
+        
+        // Update Redis
+        redisClient.setEx(
+          `timer:${sessionId}`,
+          3600,
+          JSON.stringify(timerData)
+        );
+        
+        // Broadcast to all participants in session
+        io.to(sessionId).emit('session-timer-update', {
+          sessionId,
+          timeRemaining: timerData.timeRemaining,
+          isActive: timerData.isActive,
+          isPaused: false,
+          timestamp: Date.now()
+        });
+        
+        console.log(`Session timer resumed in session ${sessionId}`);
+      }
+      
+    } catch (error) {
+      console.error('Error handling session timer resume:', error);
+      socket.emit('error', { message: 'Failed to resume session timer' });
+    }
+  });
+
   // Handle session timer update
   socket.on('session-timer-update', (data) => {
     try {
@@ -464,11 +583,62 @@ const ParserMonitor = {
   }
 };
 
+// Timer management
+const TimerManager = {
+  // Update all active timers every second
+  updateTimers: async () => {
+    try {
+      // Get all timer keys from Redis
+      const timerKeys = await redisClient.keys('timer:*');
+      
+      for (const key of timerKeys) {
+        const timerDataStr = await redisClient.get(key);
+        if (timerDataStr) {
+          const timerData = JSON.parse(timerDataStr);
+          
+          // Only update if timer is active and not paused
+          if (timerData.isActive && !timerData.isPaused) {
+            const now = Date.now();
+            const elapsed = Math.floor((now - timerData.startTime) / 1000);
+            const newTimeRemaining = Math.max(0, timerData.duration - elapsed);
+            
+            // Update timer data
+            timerData.timeRemaining = newTimeRemaining;
+            
+            // If timer reached zero, mark as inactive
+            if (newTimeRemaining <= 0) {
+              timerData.isActive = false;
+              console.log(`Timer for session ${timerData.sessionId} completed`);
+            }
+            
+            // Update Redis
+            redisClient.setEx(key, 3600, JSON.stringify(timerData));
+            
+            // Broadcast update to session participants
+            io.to(timerData.sessionId).emit('session-timer-update', {
+              sessionId: timerData.sessionId,
+              timeRemaining: newTimeRemaining,
+              isActive: timerData.isActive,
+              isPaused: timerData.isPaused,
+              timestamp: now
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error updating timers:', error);
+    }
+  }
+};
+
+// Start timer update interval (every 5 seconds to reduce video jumping)
+setInterval(TimerManager.updateTimers, 5000);
+
 // Export for use in other modules
-module.exports = { ParserMonitor };
+module.exports = { ParserMonitor, TimerManager };
 
 // Start server
-const PORT = process.env.SOCKET_PORT || 3001;
+const PORT = process.env.SOCKET_PORT || 3002;
 server.listen(PORT, () => {
   console.log(`Socket.io server running on port ${PORT}`);
   console.log(`Health check available at http://localhost:${PORT}/health`);

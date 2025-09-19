@@ -111,5 +111,15 @@ export function initErrorFiltering() {
     filterWindowErrors();
     filterPromiseRejections();
     setupGlobalErrorHandling();
+    
+    // Дополнительная защита от ошибок расширений
+    const originalConsoleError = console.error;
+    console.error = (...args: any[]) => {
+      const errorMessage = args.join(' ');
+      if (isBrowserExtensionError(errorMessage)) {
+        return; // Игнорируем ошибки расширений
+      }
+      originalConsoleError.apply(console, args);
+    };
   }
 }

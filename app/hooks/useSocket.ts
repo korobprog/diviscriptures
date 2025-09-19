@@ -10,7 +10,7 @@ export interface SocketEventHandlers {
   'reading-started': (data: { participantId: string; verse: any }) => void;
   'reading-finished': (data: { participantId: string; verse: any }) => void;
   'queue-updated': (data: { queue: string[]; currentReader?: string }) => void;
-  'session-timer-update': (data: { timeRemaining: number; isActive: boolean }) => void;
+  'session-timer-update': (data: { timeRemaining: number; isActive: boolean; isPaused?: boolean }) => void;
   'session-ended': (data: { sessionId: string; reason: string }) => void;
   'error': (data: { message: string; code?: string }) => void;
 }
@@ -65,7 +65,7 @@ export interface UseSocketReturn {
 }
 
 export function useSocket({
-  socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001',
+  socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002',
   autoConnect = true,
   onConnect,
   onDisconnect,
@@ -109,22 +109,21 @@ export function useSocket({
       timeout: 10000,
       forceNew: true,
       autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
 
     // Connection events
     newSocket.on('connect', () => {
-      console.log('Socket connected:', newSocket.id);
       setIsConnected(true);
       setIsConnecting(false);
       setError(null);
       onConnect?.();
     });
 
-    newSocket.on('disconnect', (reason) => {
-      // Не логируем отключения при Hot Reload
-      if (reason !== 'io client disconnect' && reason !== 'transport close') {
-        console.log('Socket disconnected:', reason);
-      }
+    newSocket.on('disconnect', () => {
       setIsConnected(false);
       setIsConnecting(false);
       onDisconnect?.();
@@ -133,8 +132,9 @@ export function useSocket({
     newSocket.on('connect_error', (err) => {
       // Фильтруем ошибки браузерных расширений
       if (err.message.includes('Could not establish connection') || 
-          err.message.includes('Receiving end does not exist')) {
-        console.warn('Browser extension error (ignored):', err.message);
+          err.message.includes('Receiving end does not exist') ||
+          err.message.includes('WebSocket is closed before the connection is established')) {
+        // Не логируем и не показываем ошибки браузерных расширений
         return;
       }
       
@@ -144,54 +144,54 @@ export function useSocket({
       onError?.(err.message);
     });
 
+    newSocket.on('reconnect_error', (err) => {
+      // Фильтруем ошибки браузерных расширений
+      if (err.message.includes('Could not establish connection') || 
+          err.message.includes('Receiving end does not exist') ||
+          err.message.includes('WebSocket is closed before the connection is established')) {
+        return;
+      }
+      setError(`Reconnection error: ${err.message}`);
+    });
+
     // Custom event handlers
     newSocket.on('session-joined', (data) => {
-      console.log('Session joined:', data);
       emitToHandlers('session-joined', data);
     });
 
     newSocket.on('session-left', (data) => {
-      console.log('Session left:', data);
       emitToHandlers('session-left', data);
     });
 
     newSocket.on('participant-joined', (data) => {
-      console.log('Participant joined:', data);
       emitToHandlers('participant-joined', data);
     });
 
     newSocket.on('participant-left', (data) => {
-      console.log('Participant left:', data);
       emitToHandlers('participant-left', data);
     });
 
     newSocket.on('verse-changed', (data) => {
-      console.log('Verse changed:', data);
       emitToHandlers('verse-changed', data);
     });
 
     newSocket.on('reading-started', (data) => {
-      console.log('Reading started:', data);
       emitToHandlers('reading-started', data);
     });
 
     newSocket.on('reading-finished', (data) => {
-      console.log('Reading finished:', data);
       emitToHandlers('reading-finished', data);
     });
 
     newSocket.on('queue-updated', (data) => {
-      console.log('Queue updated:', data);
       emitToHandlers('queue-updated', data);
     });
 
     newSocket.on('session-timer-update', (data) => {
-      console.log('Session timer update:', data);
       emitToHandlers('session-timer-update', data);
     });
 
     newSocket.on('session-ended', (data) => {
-      console.log('Session ended:', data);
       emitToHandlers('session-ended', data);
     });
 

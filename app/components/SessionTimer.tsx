@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +28,7 @@ interface SessionTimerProps {
   className?: string;
 }
 
-export default function SessionTimer({
+const SessionTimer = memo(function SessionTimer({
   timeRemaining,
   isActive,
   isPaused = false,
@@ -48,9 +48,17 @@ export default function SessionTimer({
     const lowTimeThreshold = 300; // 5 minutes
     const criticalTimeThreshold = 60; // 1 minute
 
-    setIsLowTime(timeRemaining <= lowTimeThreshold && timeRemaining > criticalTimeThreshold);
-    setIsCriticalTime(timeRemaining <= criticalTimeThreshold && timeRemaining > 0);
-  }, [timeRemaining]);
+    const newIsLowTime = timeRemaining <= lowTimeThreshold && timeRemaining > criticalTimeThreshold;
+    const newIsCriticalTime = timeRemaining <= criticalTimeThreshold && timeRemaining > 0;
+    
+    // Only update state if values actually changed
+    if (newIsLowTime !== isLowTime) {
+      setIsLowTime(newIsLowTime);
+    }
+    if (newIsCriticalTime !== isCriticalTime) {
+      setIsCriticalTime(newIsCriticalTime);
+    }
+  }, [timeRemaining, isLowTime, isCriticalTime]);
 
   // Format time display
   const formatTime = (seconds: number) => {
@@ -76,6 +84,7 @@ export default function SessionTimer({
     if (isLowTime) return 'Мало времени';
     return 'Активен';
   };
+
 
   // Get status color
   const getStatusColor = () => {
@@ -249,4 +258,6 @@ export default function SessionTimer({
       </CardContent>
     </Card>
   );
-}
+});
+
+export default SessionTimer;

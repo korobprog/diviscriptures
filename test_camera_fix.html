@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        video {
+            width: 100%;
+            max-width: 400px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .start { background-color: #4CAF50; color: white; }
+        .stop { background-color: #f44336; color: white; }
+        .toggle { background-color: #2196F3; color: white; }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>Camera Test</h1>
+    
+    <div id="status" class="status"></div>
+    
+    <video id="video" autoplay playsinline></video>
+    
+    <div>
+        <button id="startBtn" class="start">Start Camera</button>
+        <button id="stopBtn" class="stop" disabled>Stop Camera</button>
+        <button id="toggleBtn" class="toggle" disabled>Toggle Video</button>
+    </div>
+    
+    <div id="info"></div>
+
+    <script>
+        let stream = null;
+        let videoTrack = null;
+        let isVideoOn = true;
+        
+        const video = document.getElementById('video');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const toggleBtn = document.getElementById('toggleBtn');
+        const status = document.getElementById('status');
+        const info = document.getElementById('info');
+        
+        function updateStatus(message, isError = false) {
+            status.textContent = message;
+            status.className = `status ${isError ? 'error' : 'success'}`;
+        }
+        
+        function updateInfo() {
+            info.innerHTML = `
+                <h3>Status:</h3>
+                <p>Stream: ${stream ? 'Active' : 'Inactive'}</p>
+                <p>Video Track: ${videoTrack ? 'Present' : 'None'}</p>
+                <p>Video Enabled: ${videoTrack ? videoTrack.enabled : 'N/A'}</p>
+                <p>Video State: ${isVideoOn ? 'On' : 'Off'}</p>
+            `;
+        }
+        
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480 },
+                    audio: true
+                });
+                
+                video.srcObject = stream;
+                videoTrack = stream.getVideoTracks()[0];
+                isVideoOn = videoTrack.enabled;
+                
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                toggleBtn.disabled = false;
+                
+                updateStatus('Camera started successfully!');
+                updateInfo();
+            } catch (error) {
+                updateStatus(`Error starting camera: ${error.message}`, true);
+                console.error('Camera error:', error);
+            }
+        }
+        
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                videoTrack = null;
+                video.srcObject = null;
+                
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                toggleBtn.disabled = true;
+                
+                updateStatus('Camera stopped');
+                updateInfo();
+            }
+        }
+        
+        function toggleVideo() {
+            if (videoTrack) {
+                videoTrack.enabled = !videoTrack.enabled;
+                isVideoOn = videoTrack.enabled;
+                
+                updateStatus(`Video ${isVideoOn ? 'enabled' : 'disabled'}`);
+                updateInfo();
+            }
+        }
+        
+        startBtn.addEventListener('click', startCamera);
+        stopBtn.addEventListener('click', stopCamera);
+        toggleBtn.addEventListener('click', toggleVideo);
+        
+        // Initial info update
+        updateInfo();
+    </script>
+</body>
+</html>

@@ -7,8 +7,7 @@ import sys
 from typing import List
 
 from bhagavad_gita_parser import BhagavadGitaParser
-from srimad_bhagavatam_parser import SrimadBhagavatamParser
-from chaitanya_charitamrita_parser import ChaitanyaCharitamritaParser
+from srimad_bhagavatam_parser_v2 import SrimadBhagavatamParser
 from database import DatabaseManager
 from models import ParseResult
 from config import VEDABASE_URLS
@@ -32,8 +31,6 @@ async def parse_text_type(text_type: str, save_to_db: bool = True, max_chapters:
         parser = BhagavadGitaParser()
     elif text_type == 'sb':
         parser = SrimadBhagavatamParser()
-    elif text_type == 'cc':
-        parser = ChaitanyaCharitamritaParser()
     else:
         print(f"❌ Parser for {text_type} not implemented yet")
         return None
@@ -65,7 +62,7 @@ async def main():
     """Main function"""
     parser = argparse.ArgumentParser(description='Python parser for vedabase.io')
     parser.add_argument('--text-type', '-t', 
-                       choices=['bg', 'sb', 'cc', 'all'],
+                       choices=['bg', 'sb', 'all'],
                        default='bg',
                        help='Text type to parse (default: bg)')
     parser.add_argument('--no-save', action='store_true',
@@ -113,7 +110,7 @@ async def main():
         
         # Parse text types
         if args.text_type == 'all':
-            text_types = ['bg', 'sb', 'cc']
+            text_types = ['bg', 'sb']
         else:
             text_types = [args.text_type]
         

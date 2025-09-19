@@ -116,90 +116,88 @@ export function useSocket({
 
     // Connection events
     newSocket.on('connect', () => {
-      console.log('Socket connected:', newSocket.id);
       setIsConnected(true);
       setIsConnecting(false);
       setError(null);
       onConnect?.();
     });
 
-    newSocket.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason);
+    newSocket.on('disconnect', () => {
       setIsConnected(false);
       setIsConnecting(false);
       onDisconnect?.();
     });
 
     newSocket.on('connect_error', (err) => {
-      console.error('Socket connection error:', err);
+      // Фильтруем ошибки браузерных расширений
+      if (err.message.includes('Could not establish connection') || 
+          err.message.includes('Receiving end does not exist') ||
+          err.message.includes('WebSocket is closed before the connection is established')) {
+        // Не логируем и не показываем ошибки браузерных расширений
+        return;
+      }
+      
       setError(`Connection error: ${err.message}`);
       setIsConnecting(false);
       onError?.(err.message);
     });
 
     newSocket.on('reconnect_error', (err) => {
-      console.error('Socket reconnection error:', err);
+      // Фильтруем ошибки браузерных расширений
+      if (err.message.includes('Could not establish connection') || 
+          err.message.includes('Receiving end does not exist') ||
+          err.message.includes('WebSocket is closed before the connection is established')) {
+        return;
+      }
       setError(`Reconnection error: ${err.message}`);
     });
 
     newSocket.on('reconnect_failed', () => {
-      console.error('Socket reconnection failed');
       setError('Failed to reconnect to server');
     });
 
     // Custom event handlers
     newSocket.on('session-joined', (data) => {
-      console.log('Session joined:', data);
       emitToHandlers('session-joined', data);
     });
 
     newSocket.on('session-left', (data) => {
-      console.log('Session left:', data);
       emitToHandlers('session-left', data);
     });
 
     newSocket.on('participant-joined', (data) => {
-      console.log('Participant joined:', data);
       emitToHandlers('participant-joined', data);
     });
 
     newSocket.on('participant-left', (data) => {
-      console.log('Participant left:', data);
       emitToHandlers('participant-left', data);
     });
 
     newSocket.on('verse-changed', (data) => {
-      console.log('Verse changed:', data);
       emitToHandlers('verse-changed', data);
     });
 
     newSocket.on('reading-started', (data) => {
-      console.log('Reading started:', data);
       emitToHandlers('reading-started', data);
     });
 
     newSocket.on('reading-finished', (data) => {
-      console.log('Reading finished:', data);
       emitToHandlers('reading-finished', data);
     });
 
     newSocket.on('queue-updated', (data) => {
-      console.log('Queue updated:', data);
       emitToHandlers('queue-updated', data);
     });
 
     newSocket.on('session-timer-update', (data) => {
-      console.log('Session timer update:', data);
       emitToHandlers('session-timer-update', data);
     });
 
     newSocket.on('session-ended', (data) => {
-      console.log('Session ended:', data);
       emitToHandlers('session-ended', data);
     });
 
     newSocket.on('error', (data) => {
-      console.error('Socket error:', data);
       setError(data.message);
       emitToHandlers('error', data);
       onError?.(data.message);

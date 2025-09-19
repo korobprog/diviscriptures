@@ -11,7 +11,7 @@ const updateAdminRequestSchema = z.object({
 // PUT /api/admin-requests/[id] - Update admin request status
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -36,9 +36,10 @@ export async function PUT(
       )
     }
 
+    const { id } = await params
     const adminRequest = await prisma.adminRequest.findUnique({
       where: {
-        id: params.id,
+        id,
       },
       include: {
         user: true,
@@ -65,7 +66,7 @@ export async function PUT(
     // Update the request
     const updatedRequest = await prisma.adminRequest.update({
       where: {
-        id: params.id,
+        id,
       },
       data: {
         status: validatedData.status,
@@ -84,7 +85,7 @@ export async function PUT(
       },
     })
 
-    // If approved, update user role to ADMIN
+    // If approved, update user role to ADMIN and create group if it's a group creation request
     if (validatedData.status === 'APPROVED') {
       await prisma.user.update({
         where: {
@@ -94,6 +95,52 @@ export async function PUT(
           role: 'ADMIN',
         },
       })
+
+      // Check if this is a group creation request (message contains group details)
+      if (adminRequest.message && adminRequest.message.includes('Request to create group')) {
+        // Parse group details from message
+        const message = adminRequest.message
+        const groupNameMatch = message.match(/group "([^"]+)"/)
+        const languageMatch = message.match(/Language: ([^.]+)/)
+        const descriptionMatch = message.match(/Description: ([^.]+)/)
+        
+        if (groupNameMatch) {
+          const groupName = groupNameMatch[1]
+          const language = languageMatch ? languageMatch[1].trim() : 'en'
+          const description = descriptionMatch ? descriptionMatch[1].trim() : null
+          
+          // Create the group
+          const group = await prisma.group.create({
+            data: {
+              name: groupName,
+              city: adminRequest.city,
+              country: adminRequest.country,
+              language: language,
+              description: description,
+              adminId: adminRequest.userId,
+            },
+            include: {
+              admin: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
+                },
+              },
+            },
+          })
+
+          // Update the admin request to link it to the created group
+          await prisma.adminRequest.update({
+            where: {
+              id,
+            },
+            data: {
+              groupId: group.id,
+            },
+          })
+        }
+      }
     }
 
     return NextResponse.json(updatedRequest)
@@ -116,7 +163,7 @@ export async function PUT(
 // DELETE /api/admin-requests/[id] - Delete admin request
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -128,9 +175,10 @@ export async function DELETE(
       )
     }
 
+    const { id } = await params
     const adminRequest = await prisma.adminRequest.findUnique({
       where: {
-        id: params.id,
+        id,
       },
     })
 
@@ -156,7 +204,7 @@ export async function DELETE(
 
     await prisma.adminRequest.delete({
       where: {
-        id: params.id,
+        id,
       },
     })
 

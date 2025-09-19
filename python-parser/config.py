@@ -34,18 +34,10 @@ VEDABASE_URLS = {
         'name': 'Шримад-Бхагаватам',
         'url_structure': 'canto/chapter/verse',  # sb/1/1/1/
         'has_verses': True,
-        'cantos': 12
-    },
-    'cc': {
-        'base_url': f'{VEDABASE_BASE_URL}/ru/library/cc/',
-        'chapters': 17,
-        'name': 'Шри Чайтанья-чаритамрита',
-        'url_structure': 'part/chapter/verse',  # cc/adi/1/1/
-        'has_verses': True,
-        'parts': {
-            'adi': {'name': 'Ади-лила', 'chapters': 17},
-            'madhya': {'name': 'Мадхья-лила', 'chapters': 25},
-            'antya': {'name': 'Антья-лила', 'chapters': 20}
+        'cantos': 12,
+        'chapters_per_canto': {
+            1: 19, 2: 10, 3: 33, 4: 31, 5: 26, 6: 19,
+            7: 15, 8: 24, 9: 24, 10: 90, 11: 31, 12: 13
         }
     }
 }

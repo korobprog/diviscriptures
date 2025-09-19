@@ -46,6 +46,7 @@ interface Group {
   name: string;
   city: string;
   country: string;
+  readingTime?: string;
   admin: {
     name: string;
     email: string;
@@ -123,7 +124,7 @@ export default function AdminPage() {
   const handleRequestAction = async (requestId: string, action: "APPROVED" | "REJECTED") => {
     try {
       const response = await fetch(`/api/admin-requests/${requestId}`, {
-        method: "PATCH",
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
@@ -164,6 +165,33 @@ export default function AdminPage() {
     } catch (error) {
       console.error('Ошибка сохранения настроек ИИ:', error);
       setApiTestResult({ success: false, message: 'Ошибка при сохранении настроек ИИ' });
+    }
+  };
+
+  const handleJoinMatching = async (groupId: string) => {
+    try {
+      // Сначала проверяем, можем ли мы присоединиться к группе
+      const joinResponse = await fetch(`/api/groups/join/${groupId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: 'include',
+      });
+
+      if (joinResponse.ok) {
+        const responseData = await joinResponse.json();
+        console.log("Успешное присоединение к группе:", responseData.message);
+        // Если успешно присоединились к группе, перенаправляем на страницу чтения
+        window.location.href = `/groups/join/${groupId}`;
+      } else {
+        const errorData = await joinResponse.json();
+        console.error("Ошибка присоединения к группе:", errorData);
+        alert(`Ошибка присоединения к группе: ${errorData.error || 'Неизвестная ошибка'}`);
+      }
+    } catch (error) {
+      console.error("Ошибка входа в матчинг:", error);
+      alert("Ошибка входа в матчинг. Попробуйте еще раз.");
     }
   };
 
@@ -444,7 +472,9 @@ export default function AdminPage() {
                       <TableHead>Администратор</TableHead>
                       <TableHead>Местоположение</TableHead>
                       <TableHead>Участники</TableHead>
+                      <TableHead>Время чтения</TableHead>
                       <TableHead>Дата создания</TableHead>
+                      <TableHead>Действия</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -472,9 +502,32 @@ export default function AdminPage() {
                         </TableCell>
                         <TableCell>
                           <span className="flex items-center text-sm text-saffron-600">
+                            <Clock className="w-3 h-3 mr-1" />
+                            {group.readingTime || 'Не указано'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="flex items-center text-sm text-saffron-600">
                             <Calendar className="w-3 h-3 mr-1" />
                             {new Date(group.createdAt).toLocaleDateString('ru-RU')}
                           </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-2">
+                            <Button
+                              size="sm"
+                              className="bg-gradient-to-r from-saffron-500 to-lotus-pink-500 hover:from-saffron-600 hover:to-lotus-pink-600 text-white"
+                              onClick={() => handleJoinMatching(group.id)}
+                            >
+                              <Users className="w-4 h-4 mr-1" />
+                              Войти в матчинг
+                            </Button>
+                            {session?.user?.role === 'SUPER_ADMIN' && (
+                              <Badge variant="destructive" className="text-xs w-fit">
+                                👑 Супер-админ
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

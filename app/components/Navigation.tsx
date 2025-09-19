@@ -36,11 +36,11 @@ export default function Navigation() {
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "SUPER_ADMIN":
-        return <Badge variant="destructive" className="bg-red-500 text-xs"><Crown className="w-3 h-3 mr-1" />Супер-админ</Badge>;
+        return <Badge variant="destructive" className="bg-red-500 text-white text-sm px-3 py-1 font-semibold shadow-md"><Crown className="w-4 h-4 mr-1" />Супер-админ</Badge>;
       case "ADMIN":
-        return <Badge variant="default" className="bg-saffron-500 text-xs"><Users className="w-3 h-3 mr-1" />Админ</Badge>;
+        return <Badge variant="default" className="bg-saffron-500 text-white text-sm px-3 py-1 font-semibold shadow-md"><Users className="w-4 h-4 mr-1" />Админ</Badge>;
       default:
-        return <Badge variant="secondary" className="text-xs">Участник</Badge>;
+        return <Badge variant="secondary" className="text-sm px-3 py-1 font-medium">Участник</Badge>;
     }
   };
 
@@ -62,13 +62,13 @@ export default function Navigation() {
           <div className="hidden md:flex items-center space-x-6">
             <Link 
               href="/" 
-              className="text-saffron-700 hover:text-saffron-800 font-medium transition-colors"
+              className="text-saffron-800 hover:text-saffron-900 font-semibold transition-colors text-base"
             >
               Главная
             </Link>
             <Link 
               href="/groups" 
-              className="text-saffron-700 hover:text-saffron-800 font-medium transition-colors"
+              className="text-saffron-800 hover:text-saffron-900 font-semibold transition-colors text-base"
             >
               Группы
             </Link>
@@ -76,13 +76,13 @@ export default function Navigation() {
               <>
                 <Link 
                   href="/admin" 
-                  className="text-saffron-700 hover:text-saffron-800 font-medium transition-colors"
+                  className="text-saffron-800 hover:text-saffron-900 font-semibold transition-colors text-base"
                 >
                   Админ панель
                 </Link>
                 <Link 
                   href="/admin/parser" 
-                  className="text-saffron-700 hover:text-saffron-800 font-medium transition-colors"
+                  className="text-saffron-800 hover:text-saffron-900 font-semibold transition-colors text-base"
                 >
                   Парсер
                 </Link>
@@ -98,10 +98,10 @@ export default function Navigation() {
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                      <Avatar className="h-10 w-10">
+                    <Button variant="ghost" className="relative h-12 w-12 rounded-full hover:bg-saffron-50 transition-colors">
+                      <Avatar className="h-12 w-12 border-2 border-saffron-200">
                         <AvatarImage src={session.user.image || ""} />
-                        <AvatarFallback className="bg-gradient-to-br from-saffron-400 to-lotus-pink-400 text-white">
+                        <AvatarFallback className="bg-gradient-to-br from-saffron-500 to-lotus-pink-500 text-white font-semibold text-lg">
                           {getInitials(session.user.name || "U")}
                         </AvatarFallback>
                       </Avatar>

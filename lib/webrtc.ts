@@ -197,7 +197,10 @@ export const webrtcUtils = {
       );
       return stream;
     } catch (error) {
-      console.error('Error accessing display media:', error);
+      // Don't log permission denied errors as they are normal user behavior
+      if (error instanceof Error && error.name !== 'NotAllowedError') {
+        console.error('Error accessing display media:', error);
+      }
       throw error;
     }
   },
