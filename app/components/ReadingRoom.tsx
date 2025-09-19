@@ -174,6 +174,19 @@ export default function ReadingRoom({
                 onRemoveFromQueue={removeFromQueue}
                 onClearQueue={clearQueue}
               />
+
+              {/* Session Timer - Moved under participants */}
+              <TimerContainer
+                timeRemaining={sessionState.timeRemaining}
+                isActive={sessionState.isActive}
+                isPaused={sessionState.isPaused}
+                totalDuration={3600} // 1 hour
+                onStart={() => startTimer(3600)}
+                onPause={pauseTimer}
+                onResume={resumeTimer}
+                onReset={() => startTimer(3600)}
+                onExtend={(minutes) => startTimer(sessionState.timeRemaining + minutes * 60)}
+              />
             </div>
           </div>
 
@@ -321,20 +334,6 @@ export default function ReadingRoom({
             </Card>
           </div>
 
-          {/* Session Timer - Moved to bottom to avoid overlapping with video */}
-          <div className="w-full">
-            <TimerContainer
-              timeRemaining={sessionState.timeRemaining}
-              isActive={sessionState.isActive}
-              isPaused={sessionState.isPaused}
-              totalDuration={3600} // 1 hour
-              onStart={() => startTimer(3600)}
-              onPause={pauseTimer}
-              onResume={resumeTimer}
-              onReset={() => startTimer(3600)}
-              onExtend={(minutes) => startTimer(sessionState.timeRemaining + minutes * 60)}
-            />
-          </div>
         </div>
       </div>
     </div>
