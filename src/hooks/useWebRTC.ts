@@ -183,7 +183,7 @@ export function useWebRTC({
   }, [participantId]);
 
   // Create peer connection
-  const createPeerConnection = useCallback((participantId: string): RTCPeerConnection => {
+  const createPeerConnection = useCallback((targetParticipantId: string): RTCPeerConnection => {
     const config = getWebRTCConfig();
     const peerConnection = new RTCPeerConnection(config);
 
@@ -201,7 +201,7 @@ export function useWebRTC({
           type: 'ice-candidate',
           sessionId,
           from: participantId,
-          to: participantId,
+          to: targetParticipantId,
           data: event.candidate,
           timestamp: Date.now(),
         };
@@ -212,22 +212,22 @@ export function useWebRTC({
     // Handle remote stream
     peerConnection.ontrack = (event) => {
       const [remoteStream] = event.streams;
-      updateParticipantStream(participantId, remoteStream);
+      updateParticipantStream(targetParticipantId, remoteStream);
     };
 
     // Handle connection state changes
     peerConnection.onconnectionstatechange = () => {
       const state = peerConnection.connectionState as ConnectionState;
-      updateParticipantConnectionState(participantId, state);
+      updateParticipantConnectionState(targetParticipantId, state);
     };
 
     // Handle ICE connection state changes
     peerConnection.oniceconnectionstatechange = () => {
-      console.log(`ICE connection state for ${participantId}:`, peerConnection.iceConnectionState);
+      console.log(`ICE connection state for ${targetParticipantId}:`, peerConnection.iceConnectionState);
     };
 
     return peerConnection;
-  }, [sessionId]);
+  }, [sessionId, participantId]);
 
   // Handle offer
   const handleOffer = async (peerConnection: RTCPeerConnection, offer: RTCSessionDescriptionInit) => {
@@ -345,10 +345,10 @@ export function useWebRTC({
   }, []);
 
   // Create offer for participant
-  const createOfferForParticipant = useCallback(async (participantId: string) => {
+  const createOfferForParticipant = useCallback(async (targetParticipantId: string) => {
     try {
-      const peerConnection = createPeerConnection(participantId);
-      peerConnectionsRef.current.set(participantId, peerConnection);
+      const peerConnection = createPeerConnection(targetParticipantId);
+      peerConnectionsRef.current.set(targetParticipantId, peerConnection);
 
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
@@ -358,7 +358,7 @@ export function useWebRTC({
           type: 'offer',
           sessionId,
           from: participantId,
-          to: participantId,
+          to: targetParticipantId,
           data: offer,
           timestamp: Date.now(),
         };
@@ -368,7 +368,7 @@ export function useWebRTC({
       console.error('Error creating offer:', error);
       setError(`Failed to create offer: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [sessionId, createPeerConnection]);
+  }, [sessionId, participantId, createPeerConnection]);
 
   // Join session
   const joinSession = useCallback(async () => {
