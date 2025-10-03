@@ -57,7 +57,7 @@ export function useWebRTC({
   sessionId,
   participantId,
   participantName,
-  socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002',
+  socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001',
   autoJoin = true
 }: UseWebRTCOptions): UseWebRTCReturn {
   // State

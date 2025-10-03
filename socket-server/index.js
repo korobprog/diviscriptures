@@ -638,7 +638,7 @@ setInterval(TimerManager.updateTimers, 5000);
 module.exports = { ParserMonitor, TimerManager };
 
 // Start server
-const PORT = process.env.SOCKET_PORT || 3002;
+const PORT = process.env.SOCKET_PORT || 3001;
 server.listen(PORT, () => {
   console.log(`Socket.io server running on port ${PORT}`);
   console.log(`Health check available at http://localhost:${PORT}/health`);

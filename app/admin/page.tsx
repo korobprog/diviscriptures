@@ -52,6 +52,9 @@ interface Group {
     email: string;
   };
   participantsCount: number;
+  memberCount: number;
+  maxParticipants: number;
+  isMember: boolean;
   createdAt: string;
 }
 
@@ -187,7 +190,30 @@ export default function AdminPage() {
       } else {
         const errorData = await joinResponse.json();
         console.error("Ошибка присоединения к группе:", errorData);
-        alert(`Ошибка присоединения к группе: ${errorData.error || 'Неизвестная ошибка'}`);
+        
+        // Provide user-friendly error messages
+        let userMessage = 'Неизвестная ошибка';
+        switch (errorData.error) {
+          case 'Group is full':
+            userMessage = 'Группа заполнена. Попробуйте присоединиться к другой группе или создайте новую.';
+            break;
+          case 'You are already a member of this group':
+            userMessage = 'Вы уже являетесь участником этой группы.';
+            break;
+          case 'Group is not active':
+            userMessage = 'Группа неактивна. Обратитесь к администратору.';
+            break;
+          case 'Group not found':
+            userMessage = 'Группа не найдена. Возможно, она была удалена.';
+            break;
+          case 'Unauthorized':
+            userMessage = 'Необходимо войти в систему для присоединения к группе.';
+            break;
+          default:
+            userMessage = `Ошибка присоединения к группе: ${errorData.error}`;
+        }
+        
+        alert(userMessage);
       }
     } catch (error) {
       console.error("Ошибка входа в матчинг:", error);
@@ -496,9 +522,14 @@ export default function AdminPage() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary">
-                            {group.participantsCount} участников
-                          </Badge>
+                          <div className="flex flex-col gap-1">
+                            <Badge variant={group.memberCount >= group.maxParticipants ? "destructive" : "secondary"}>
+                              {group.memberCount}/{group.maxParticipants} участников
+                            </Badge>
+                            {group.memberCount >= group.maxParticipants && (
+                              <span className="text-xs text-red-600">Группа заполнена</span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <span className="flex items-center text-sm text-saffron-600">
@@ -516,11 +547,21 @@ export default function AdminPage() {
                           <div className="flex flex-col gap-2">
                             <Button
                               size="sm"
-                              className="bg-gradient-to-r from-saffron-500 to-lotus-pink-500 hover:from-saffron-600 hover:to-lotus-pink-600 text-white"
+                              disabled={group.memberCount >= group.maxParticipants && !group.isMember}
+                              className={`${
+                                group.memberCount >= group.maxParticipants && !group.isMember
+                                  ? "bg-gray-400 cursor-not-allowed"
+                                  : "bg-gradient-to-r from-saffron-500 to-lotus-pink-500 hover:from-saffron-600 hover:to-lotus-pink-600"
+                              } text-white`}
                               onClick={() => handleJoinMatching(group.id)}
                             >
                               <Users className="w-4 h-4 mr-1" />
-                              Войти в матчинг
+                              {group.isMember 
+                                ? "Уже участник" 
+                                : group.memberCount >= group.maxParticipants 
+                                  ? "Группа заполнена" 
+                                  : "Войти в матчинг"
+                              }
                             </Button>
                             {session?.user?.role === 'SUPER_ADMIN' && (
                               <Badge variant="destructive" className="text-xs w-fit">

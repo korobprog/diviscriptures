@@ -46,7 +46,7 @@ services:
     container_name: vrinda-sangha-socket
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "3003:3001"
     environment:
       - REDIS_URL=redis://redis:6379
       - SOCKET_PORT=3001

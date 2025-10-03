@@ -65,7 +65,7 @@ export interface UseSocketReturn {
 }
 
 export function useSocket({
-  socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002',
+  socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3003',
   autoConnect = true,
   onConnect,
   onDisconnect,
